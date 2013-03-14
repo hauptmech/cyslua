@@ -407,7 +407,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         next(ls);
         break;
       }
-      case '-': {  /* '-' or '--' (comment) */
+     case '-': {  /* '-' or '--' (comment) */
         next(ls);
         if (ls->current != '-') return '-';
         /* else is a comment */
@@ -481,6 +481,17 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       }
       case EOZ: {
         return TK_EOS;
+      }
+      case '_': {
+        save_and_next(ls);
+        /* short comment */
+        if (ls->current == ' ') {
+            luaZ_resetbuffer(ls->buff);
+            while (!currIsNewline(ls) && ls->current != EOZ)
+              next(ls);  /* skip until end of line (or end of file) */
+            break;
+        }
+        /* else fall through to alphanumeric processing */
       }
       default: {
         if (lislalpha(ls->current)) {  /* identifier or reserved word? */
