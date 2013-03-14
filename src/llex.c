@@ -7,6 +7,7 @@
 
 #include <locale.h>
 #include <string.h>
+#include <stdio.h>
 
 #define llex_c
 #define LUA_CORE
@@ -39,7 +40,7 @@ static const char *const luaX_tokens [] = {
     "in", "local", "nil", "not", "or", "repeat",
     "return", "then", "true", "until", "while",
     "..", "...", "==", ">=", "<=", "~=", "::", "<eof>",
-    "<number>", "<name>", "<string>"
+    "<number>", "<name>", "<string>", "<long_string>"
 };
 
 
@@ -92,6 +93,7 @@ static const char *txtToken (LexState *ls, int token) {
   switch (token) {
     case TK_NAME:
     case TK_STRING:
+    case TK_LONG_STRING:
     case TK_NUMBER:
       save(ls, '\0');
       return luaO_pushfstring(ls->L, LUA_QS, luaZ_buffer(ls->buff));
@@ -246,6 +248,31 @@ static void read_numeral (LexState *ls, SemInfo *seminfo) {
     trydecpoint(ls, seminfo); /* try to update decimal point separator */
 }
 
+/*
+** skip a sequence '----*' or '====*' and return its number of '='s or
+** '-'s
+*/
+static int skip_new_sep (LexState *ls) {
+  int count = 0;
+  int s = ls->current;
+  lua_assert(s == '-' || s == '=');
+  save_and_next(ls);
+  if (s == '-'){
+      while (ls->current == '-') {
+        save_and_next(ls);
+        count++;
+      }
+  }
+  else{// (s == '='){
+      while (ls->current == '=') {
+        save_and_next(ls);
+        count++;
+      }
+      count = count -2;
+  }
+  return  count;
+}
+
 
 /*
 ** skip a sequence '[=*[' or ']=*]' and return its number of '='s or
@@ -262,6 +289,41 @@ static int skip_sep (LexState *ls) {
   }
   return (ls->current == s) ? count : (-count) - 1;
 }
+
+static void read_new_long_string (LexState *ls, SemInfo *seminfo, int sep) {
+  //save_and_next(ls);  /* skip 2nd `[' */
+  if (currIsNewline(ls))  /* string starts with a newline? */
+    inclinenumber(ls);  /* skip it */
+  for (;;) {
+    switch (ls->current) {
+      case EOZ:
+        lexerror(ls, (seminfo) ? "unfinished long string" :
+                                 "unfinished long comment", TK_EOS);
+        break;  /* to avoid warnings */
+      case '=': {
+        if (skip_new_sep(ls) == sep) {
+          //save_and_next(ls);  /* skip 2nd `]' */
+          goto endloop;
+        }
+        break;
+      }
+      case '\n': case '\r': {
+        save(ls, '\n');
+        inclinenumber(ls);
+        if (!seminfo) luaZ_resetbuffer(ls->buff);  /* avoid wasting space */
+        break;
+      }
+      default: {
+        if (seminfo) save_and_next(ls);
+        else next(ls);
+      }
+    }
+  } endloop:
+  if (seminfo)
+    seminfo->ts = luaX_newstring(ls, luaZ_buffer(ls->buff) + (1 + sep),
+                                     luaZ_bufflen(ls->buff) - ((1+sep)+(3+sep)));
+}
+
 
 
 static void read_long_string (LexState *ls, SemInfo *seminfo, int sep) {
@@ -412,14 +474,13 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         if (ls->current != '-') return '-';
         /* else is a comment */
         next(ls);
-        if (ls->current == '[') {  /* long comment? */
-          int sep = skip_sep(ls);
-          luaZ_resetbuffer(ls->buff);  /* `skip_sep' may dirty the buffer */
+        if (ls->current == '-') {  /* long string/comment? */
+          int sep = skip_new_sep(ls);
           if (sep >= 0) {
-            read_long_string(ls, NULL, sep);  /* skip long comment */
-            luaZ_resetbuffer(ls->buff);  /* previous call may dirty the buff. */
-            break;
+            read_new_long_string(ls, seminfo, sep);  /* skip long comment */
+            return TK_LONG_STRING;
           }
+          luaZ_resetbuffer(ls->buff);  /* `skip_sep' may dirty the buffer */
         }
         /* else short comment */
         while (!currIsNewline(ls) && ls->current != EOZ)

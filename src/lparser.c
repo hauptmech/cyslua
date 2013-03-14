@@ -60,7 +60,7 @@ static void expr (LexState *ls, expdesc *v);
 static void anchor_token (LexState *ls) {
   /* last token from outer function must be EOS */
   lua_assert(ls->fs != NULL || ls->t.token == TK_EOS);
-  if (ls->t.token == TK_NAME || ls->t.token == TK_STRING) {
+  if (ls->t.token == TK_NAME || ls->t.token == TK_STRING || ls->t.token == TK_LONG_STRING) {
     TString *ts = ls->t.seminfo.ts;
     luaX_newstring(ls, getstr(ts), ts->tsv.len);
   }
@@ -103,6 +103,7 @@ static int testnext (LexState *ls, int c) {
     luaX_next(ls);
     return 1;
   }
+  
   else return 0;
 }
 
@@ -941,6 +942,7 @@ static void simpleexp (LexState *ls, expdesc *v) {
       v->u.nval = ls->t.seminfo.r;
       break;
     }
+    case TK_LONG_STRING:
     case TK_STRING: {
       codestring(ls, v, ls->t.seminfo.ts);
       break;
@@ -1529,6 +1531,10 @@ static void statement (LexState *ls) {
   enterlevel(ls);
   switch (ls->t.token) {
     case ';': {  /* stat -> ';' (empty statement) */
+      luaX_next(ls);  /* skip ';' */
+      break;
+    }
+    case TK_LONG_STRING: {  /* stat ->  lone string */
       luaX_next(ls);  /* skip ';' */
       break;
     }
