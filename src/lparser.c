@@ -659,7 +659,7 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
   else  /* ls->t.token == '[' */
     yindex(ls, &key);
   cc->nh++;
-  checknext(ls, '=');
+  checknext(ls, ':');
   rkkey = luaK_exp2RK(fs, &key);
   expr(ls, &val);
   luaK_codeABC(fs, OP_SETTABLE, cc->t->u.info, rkkey, luaK_exp2RK(fs, &val));
@@ -706,7 +706,8 @@ static void field (LexState *ls, struct ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->t.token) {
     case TK_NAME: {  /* may be 'listfield' or 'recfield' */
-      if (luaX_lookahead(ls) != '=')  /* expression? */
+
+      if (luaX_lookahead(ls) != ':')  /* expression? */
         listfield(ls, cc);
       else
         recfield(ls, cc);
@@ -723,7 +724,7 @@ static void field (LexState *ls, struct ConsControl *cc) {
   }
 }
 
-
+/* Table constructor */
 static void constructor (LexState *ls, expdesc *t) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
