@@ -731,24 +731,111 @@ static void tableconstructor (LexState *ls, expdesc *t) {
      sep -> ',' | ';' */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
-  int pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+  int pc = 0;
   struct ConsControl cc;
+  int cnt = 0;
+  int done = 0;
+
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = t;
-  init_exp(t, VRELOCABLE, pc);
   init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
-  luaK_exp2nextreg(ls->fs, t);  /* fix it at stack top */
-  checknext(ls, '{');
+/*
+  pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+  init_exp(t, VRELOCABLE, pc);
+  luaK_exp2nextreg(ls->fs, t);  
+*/
+/* fix it at stack top */
+
+  checknext(ls, '(');
   do {
     lua_assert(cc.v.k == VVOID || cc.tostore > 0);
-    if (ls->t.token == '}') break;
-    closelistfield(fs, &cc);
-    field(ls, &cc);
-  } while (testnext(ls, ',') || testnext(ls, ';'));
-  check_match(ls, '}', '{', line);
-  lastlistfield(fs, &cc);
-  SETARG_B(fs->f->code[pc], luaO_int2fb(cc.na)); /* set initial array size */
-  SETARG_C(fs->f->code[pc], luaO_int2fb(cc.nh));  /* set initial table size */
+    if (ls->t.token == ')') {
+        if(cnt==1){
+          pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+          init_exp(t, VRELOCABLE, pc);
+          luaK_exp2nextreg(ls->fs, t);  
+        }
+        break;
+    }
+    //closelistfield(fs, &cc);
+    if (cc.v.k != VVOID) {  /* there is no list item */
+      if(cnt==1){
+          pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+          init_exp(t, VRELOCABLE, pc);
+          luaK_exp2nextreg(ls->fs, t);  
+      }
+        luaK_exp2nextreg(fs, &cc.v);
+        cc.v.k = VVOID;
+        if (cc.tostore == LFIELDS_PER_FLUSH) {
+          luaK_setlist(fs, cc.t->u.info, cc.na, cc.tostore);  /* flush */
+          cc.tostore = 0;  /* no more items pending */
+        }
+    }
+
+    //field(ls, &cc);
+      /* field -> listfield | recfield */
+      switch(ls->t.token) {
+        case TK_NAME: {  /* may be 'listfield' or 'recfield' */
+          if (luaX_lookahead(ls) == ':')  /* expression? */
+            recfield(ls, &cc);
+          else
+          //  listfield(ls, &cc);
+              expr(ls, &cc.v);
+              checklimit(ls->fs, cc.na, MAX_INT, "items in a tableconstructor");
+              cc.na++;
+              cc.tostore++;
+          break;
+        }
+        case '[': {
+          recfield(ls, &cc);
+          break;
+        }
+        default: {
+          //listfield(ls, &cc);
+          expr(ls, &cc.v);
+          checklimit(ls->fs, cc.na, MAX_INT, "items in a tableconstructor");
+          cc.na++;
+          cc.tostore++;
+
+          break;
+        }
+      }
+
+      if (ls->t.token != ','){
+        done = 1;
+      }
+      else {
+        luaX_next(ls);
+        cnt++;
+      }
+  } while (!done); //(testnext(ls, ',') || testnext(ls, ';'));
+
+  check_match(ls, ')', '(', line);
+  
+  if (cnt) {
+      //lastlistfield(fs, &cc);
+      printf("table... ");
+      if (cc.tostore != 0) {
+          if (hasmultret(cc.v.k)) {
+            luaK_setmultret(fs, &cc.v);
+            luaK_setlist(fs, cc.t->u.info, cc.na, LUA_MULTRET);
+            cc.na--;  /* do not count last expression (unknown number of elements) */
+          }
+          else {
+            if (cc.v.k != VVOID)
+              luaK_exp2nextreg(fs, &cc.v);
+              luaK_setlist(fs, cc.t->u.info, cc.na, cc.tostore);
+          }
+      }
+
+      SETARG_B(fs->f->code[pc], luaO_int2fb(cc.na)); /* set initial array size */
+      SETARG_C(fs->f->code[pc], luaO_int2fb(cc.nh));  /* set initial table size */
+  }
+  else { //normal expression
+
+    luaK_dischargevars(fs, &cc.v);
+    *t = cc.v;  //Maksure our expdesc has the correct info
+  }
 }
 
 /* }====================================================================== */
@@ -835,10 +922,10 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
       check_match(ls, ')', '(', line);
       break;
     }
-    case '{': {  /* funcargs -> tableconstructor */
-      tableconstructor(ls, &args);
-      break;
-    }
+    //case '{': {  /* funcargs -> tableconstructor */
+    //  tableconstructor(ls, &args);
+    //  break;
+    //}
     case TK_STRING: {  /* funcargs -> STRING */
       codestring(ls, &args, ls->t.seminfo.ts);
       luaX_next(ls);  /* must use `seminfo' before `next' */
@@ -878,10 +965,14 @@ static void primaryexp (LexState *ls, expdesc *v) {
   switch (ls->t.token) {
     case '(': {
       int line = ls->linenumber;
+        // TEH tableconstructor generates possible expressions instead of expr...
+/*
       luaX_next(ls);
       expr(ls, v);
-      check_match(ls, ')', '(', line);
-      luaK_dischargevars(ls->fs, v);
+*/
+      tableconstructor(ls,v);
+      //check_match(ls, ')', '(', line);
+      //luaK_dischargevars(ls->fs, v);
       return;
     }
     case TK_NAME: {
@@ -1104,7 +1195,8 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
 
 
 static void expr (LexState *ls, expdesc *v) {
-  subexpr(ls, v, 0);
+  if (ls->t.token != ')') //TEH - Catch a null table expression
+     subexpr(ls, v, 0);
 }
 
 /* }==================================================================== */
