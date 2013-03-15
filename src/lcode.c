@@ -585,7 +585,7 @@ void luaK_storevar (FuncState *fs, expdesc *var, expdesc *ex) {
 
 void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
   int ereg;
-  luaK_exp2anyreg(fs, e);
+  //luaK_exp2anyreg(fs, e); //TEH - move up to before luaK_self is called
   ereg = e->u.info;  /* register where 'e' was placed */
   freeexp(fs, e);
   e->u.info = fs->freereg;  /* base register for op_self */

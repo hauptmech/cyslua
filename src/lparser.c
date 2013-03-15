@@ -654,7 +654,7 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
   expdesc key, val;
   int rkkey;
   if (ls->t.token == TK_NAME) {
-    checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+    checklimit(fs, cc->nh, MAX_INT, "items in a tableconstructor");
     checkname(ls, &key);
   }
   else  /* ls->t.token == '[' */
@@ -697,7 +697,7 @@ static void lastlistfield (FuncState *fs, struct ConsControl *cc) {
 static void listfield (LexState *ls, struct ConsControl *cc) {
   /* listfield -> exp */
   expr(ls, &cc->v);
-  checklimit(ls->fs, cc->na, MAX_INT, "items in a constructor");
+  checklimit(ls->fs, cc->na, MAX_INT, "items in a tableconstructor");
   cc->na++;
   cc->tostore++;
 }
@@ -725,9 +725,9 @@ static void field (LexState *ls, struct ConsControl *cc) {
   }
 }
 
-/* Table constructor */
-static void constructor (LexState *ls, expdesc *t) {
-  /* constructor -> '{' [ field { sep field } [sep] ] '}'
+/* Table tableconstructor */
+static void tableconstructor (LexState *ls, expdesc *t) {
+  /* tableconstructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
@@ -835,8 +835,8 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
       check_match(ls, ')', '(', line);
       break;
     }
-    case '{': {  /* funcargs -> constructor */
-      constructor(ls, &args);
+    case '{': {  /* funcargs -> tableconstructor */
+      tableconstructor(ls, &args);
       break;
     }
     case TK_STRING: {  /* funcargs -> STRING */
@@ -900,17 +900,49 @@ static void suffixedexp (LexState *ls, expdesc *v) {
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
-  primaryexp(ls, v);
+  //primaryexp(ls, v); //TEH - Brought in primaryexp
+
+  /* primaryexp -> NAME | '(' expr ')' */
+/*  switch (ls->t.token) {
+    case '(': {
+      int line = ls->linenumber;
+      luaX_next(ls);
+      expr(ls, v);
+      check_match(ls, ')', '(', line);
+      luaK_dischargevars(ls->fs, v);
+      return;
+    }
+    case TK_NAME: {
+      singlevar(ls, v);
+      return;
+    }
+    default: {
+      luaX_syntaxerror(ls, "unexpected symbol");
+    }
+  }*/
+
   for (;;) {
     switch (ls->t.token) {
       case '.': {  /* fieldsel */
-        fieldsel(ls, v);
+        //fieldsel(ls, v); //TEH - Brought fieldsel in below
+        expdesc key;
+        luaK_exp2anyregup(fs, v);
+        luaX_next(ls);  /* skip the dot or colon */
+        checkname(ls, &key);
+        luaK_indexed(fs, v, &key);
         break;
       }
+
       case '[': {  /* `[' exp1 `]' */
         expdesc key;
         luaK_exp2anyregup(fs, v);
-        yindex(ls, &key);
+        //yindex(ls, &key); //TEH - Brought yindex in below
+
+        luaX_next(ls);  /* skip the '[' */
+        expr(ls, &key);
+        luaK_exp2val(ls->fs, &key);
+        checknext(ls, ']');
+
         luaK_indexed(fs, v, &key);
         break;
       }
@@ -918,11 +950,15 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         expdesc key;
         luaX_next(ls);
         checkname(ls, &key);
+        luaK_exp2nextreg(fs, v);
         luaK_self(fs, v, &key);
         funcargs(ls, v, line);
         break;
       }
-      case '(': case TK_STRING: case '{': {  /* funcargs */
+      case '(': 
+      case TK_STRING: 
+      case '{': //ToDo: Remove
+      {  /* funcargs */
         luaK_exp2nextreg(fs, v);
         funcargs(ls, v, line);
         break;
@@ -935,7 +971,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
 
 static void simpleexp (LexState *ls, expdesc *v) {
   /* simpleexp -> NUMBER | STRING | NIL | TRUE | FALSE | ... |
-                  constructor | FUNCTION body | suffixedexp */
+                  tableconstructor | FUNCTION body | suffixedexp */
   switch (ls->t.token) {
     case TK_NUMBER: {
       init_exp(v, VKNUM, 0);
@@ -966,8 +1002,9 @@ static void simpleexp (LexState *ls, expdesc *v) {
       init_exp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 1, 0));
       break;
     }
-    case '{': {  /* constructor */
-      constructor(ls, v);
+    //case '(': table or suffixexp... 
+    case '{': {  /* tableconstructor */
+      tableconstructor(ls, v);
       return;
     }
     case TK_FUNCTION: {
@@ -976,6 +1013,7 @@ static void simpleexp (LexState *ls, expdesc *v) {
       return;
     }
     default: {
+      primaryexp(ls, v); //TEH - Adding in primaryexp
       suffixedexp(ls, v);
       return;
     }
@@ -1011,6 +1049,7 @@ static BinOpr getbinopr (int op) {
     case TK_GE: return OPR_GE;
     case TK_AND: return OPR_AND;
     case TK_OR: return OPR_OR;
+    case ';': return OPR_JOIN;
     default: return OPR_NOBINOPR;
   }
 }
@@ -1024,7 +1063,7 @@ static const struct {
    {10, 9}, {5, 4},                 /* ^, .. (right associative) */
    {3, 3}, {3, 3}, {3, 3},          /* ==, <, <= */
    {3, 3}, {3, 3}, {3, 3},          /* ~=, >, >= */
-   {2, 2}, {1, 1}                   /* and, or */
+   {2, 2}, {1, 1}, {8, 8}                   /* and, or */
 };
 
 #define UNARY_PRIORITY	8  /* priority for unary operators */
@@ -1139,6 +1178,7 @@ static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
   if (testnext(ls, ',')) {  /* assignment -> ',' suffixedexp assignment */
     struct LHS_assign nv;
     nv.prev = lh;
+    primaryexp(ls, &nv.v); //TEH - Adding in primaryexp
     suffixedexp(ls, &nv.v);
     if (nv.v.k != VINDEXED)
       check_conflict(ls, lh, &nv.v);
@@ -1457,10 +1497,11 @@ static int funcname (LexState *ls, expdesc *v) {
   singlevar(ls, v);
   while (ls->t.token == '.')
     fieldsel(ls, v);
-  if (ls->t.token == ':') {
+  if (ls->t.token == ':') { // ToDo: Remove
     ismethod = 1;
     fieldsel(ls, v);
   }
+//TODO: Every function name is a method
   return ismethod;
 }
 
@@ -1481,13 +1522,14 @@ static void exprstat (LexState *ls) {
   /* stat -> func | assignment */
   FuncState *fs = ls->fs;
   struct LHS_assign v;
+  primaryexp(ls, &v.v); //TEH - Adding in primaryexp
   suffixedexp(ls, &v.v);
   if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
     v.prev = NULL;
     assignment(ls, &v, 1);
   }
   else {  /* stat -> func */
-    check_condition(ls, v.v.k == VCALL, "syntax error");
+    check_condition(ls, v.v.k == VCALL, "syntax error, expected an assignment or function call");
     SETARG_C(getcode(fs, &v.v), 1);  /* call statement uses no results */
   }
 }
