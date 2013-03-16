@@ -525,6 +525,8 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         read_string(ls, ls->current, seminfo);
         return TK_STRING;
       }
+      case '{': next(ls);return TK_DO;
+      case '}': next(ls);return TK_END;
       case '.': {  /* '.', '..', '...', or number */
         save_and_next(ls);
         if (check_next(ls, ".")) {
