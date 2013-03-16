@@ -1011,36 +1011,26 @@ static void suffixedexp (LexState *ls, expdesc *v) {
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
+  expdesc lastkey;
+  init_exp(&lastkey, VVOID, 0);  /* no value (yet) */
   //primaryexp(ls, v); //TEH - Brought in primaryexp
-
-  /* primaryexp -> NAME | '(' expr ')' */
-/*  switch (ls->t.token) {
-    case '(': {
-      int line = ls->linenumber;
-      luaX_next(ls);
-      expr(ls, v);
-      check_match(ls, ')', '(', line);
-      luaK_dischargevars(ls->fs, v);
-      return;
-    }
-    case TK_NAME: {
-      singlevar(ls, v);
-      return;
-    }
-    default: {
-      luaX_syntaxerror(ls, "unexpected symbol");
-    }
-  }*/
 
   for (;;) {
     switch (ls->t.token) {
       case '.': {  /* fieldsel */
         //fieldsel(ls, v); //TEH - Brought fieldsel in below
         expdesc key;
-        luaK_exp2anyregup(fs, v);
         luaX_next(ls);  /* skip the dot or colon */
         checkname(ls, &key);
-        luaK_indexed(fs, v, &key);
+        if (ls->t.token == '(') {
+            luaK_exp2nextreg(fs, v);
+            luaK_self(fs, v, &key);
+            funcargs(ls, v, line);
+        }
+        else {
+            luaK_exp2anyregup(fs, v);
+            luaK_indexed(fs, v, &key);
+        }
         break;
       }
 
@@ -1061,6 +1051,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         expdesc key;
         luaX_next(ls);
         checkname(ls, &key);
+
         luaK_exp2nextreg(fs, v);
         luaK_self(fs, v, &key);
         funcargs(ls, v, line);
@@ -1069,7 +1060,10 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       case '(': 
       case TK_STRING: 
       {  /* funcargs */
+        expdesc key;
+        //codestring(ls,&key,luaX_newstring(ls,"cys",3));
         luaK_exp2nextreg(fs, v);
+        //luaK_self(fs, v, &key);
         funcargs(ls, v, line);
         break;
       }
@@ -1119,6 +1113,8 @@ static void simpleexp (LexState *ls, expdesc *v) {
     case TK_FUNCTION: {
       luaX_next(ls);
       body(ls, v, 0, ls->linenumber);
+        //ToDo: All functions have self parameter
+      //body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
       return;
     }
     default: {
@@ -1604,8 +1600,10 @@ static int funcname (LexState *ls, expdesc *v) {
   /* funcname -> NAME {fieldsel} [`:' NAME] */
   int ismethod = 0;
   singlevar(ls, v);
-  while (ls->t.token == '.')
+  while (ls->t.token == '.'){
+    ismethod = 1;
     fieldsel(ls, v);
+  }
   if (ls->t.token == ':') { // ToDo: Remove
     ismethod = 1;
     fieldsel(ls, v);
