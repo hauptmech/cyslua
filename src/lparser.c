@@ -659,6 +659,7 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
   }
   else  /* ls->t.token == '[' */
     yindex(ls, &key);
+
   cc->nh++;
   checknext(ls, ':');
   rkkey = luaK_exp2RK(fs, &key);
@@ -702,7 +703,6 @@ static void listfield (LexState *ls, struct ConsControl *cc) {
   cc->tostore++;
 }
 
-
 static void field (LexState *ls, struct ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->t.token) {
@@ -733,7 +733,7 @@ static void tableconstructor (LexState *ls, expdesc *t) {
   int line = ls->linenumber;
   int pc = 0;
   struct ConsControl cc;
-  int cnt = 0;
+  int fieldcnt = 0,init=0;
   int done = 0;
 
   cc.na = cc.nh = cc.tostore = 0;
@@ -750,55 +750,74 @@ static void tableconstructor (LexState *ls, expdesc *t) {
   do {
     lua_assert(cc.v.k == VVOID || cc.tostore > 0);
     if (ls->t.token == ')') {
-        if(cnt==1){
+        if((fieldcnt==0 || fieldcnt==1) && init==0){
           pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
           init_exp(t, VRELOCABLE, pc);
           luaK_exp2nextreg(ls->fs, t);  
-        }
-        break;
-    }
-    //closelistfield(fs, &cc);
-    if (cc.v.k != VVOID) {  /* there is no list item */
-      if(cnt==1){
-          pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-          init_exp(t, VRELOCABLE, pc);
-          luaK_exp2nextreg(ls->fs, t);  
-      }
-        luaK_exp2nextreg(fs, &cc.v);
-        cc.v.k = VVOID;
-        if (cc.tostore == LFIELDS_PER_FLUSH) {
-          luaK_setlist(fs, cc.t->u.info, cc.na, cc.tostore);  /* flush */
-          cc.tostore = 0;  /* no more items pending */
+          init=1;
+          fieldcnt=1; //If cnt was 0 then we are an empty table,
         }
     }
+    else{
+        //closelistfield(fs, &cc);
+        if (cc.v.k != VVOID) {  /* there is no list item */
+          if(fieldcnt==1 && init==0){
+              pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+              init_exp(t, VRELOCABLE, pc);
+              luaK_exp2nextreg(ls->fs, t);  
+              init=1;
+          }
+            luaK_exp2nextreg(fs, &cc.v);
+            cc.v.k = VVOID;
+            if (cc.tostore == LFIELDS_PER_FLUSH) {
+              luaK_setlist(fs, cc.t->u.info, cc.na, cc.tostore);  /* flush */
+              cc.tostore = 0;  /* no more items pending */
+            }
+        }
 
-    //field(ls, &cc);
-      /* field -> listfield | recfield */
-      switch(ls->t.token) {
-        case TK_NAME: {  /* may be 'listfield' or 'recfield' */
-          if (luaX_lookahead(ls) == ':')  /* expression? */
-            recfield(ls, &cc);
-          else
-          //  listfield(ls, &cc);
+        //field(ls, &cc);
+          /* field -> listfield | recfield */
+          switch(ls->t.token) {
+            case TK_NAME: {  /* may be 'listfield' or 'recfield' */
+              if (luaX_lookahead(ls) == ':') {  /* expression? */
+                  if( init==0){
+                      pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+                      init_exp(t, VRELOCABLE, pc);
+                      luaK_exp2nextreg(ls->fs, t);  
+                      fieldcnt++;
+                      init = 1;
+                  }
+                recfield(ls, &cc);
+              }
+              else
+              //  listfield(ls, &cc);
+                  expr(ls, &cc.v);
+                  checklimit(ls->fs, cc.na, MAX_INT, "items in a tableconstructor");
+                  cc.na++;
+                  cc.tostore++;
+              break;
+            }
+            case '[': {
+               if( init==0){
+                  pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+                  init_exp(t, VRELOCABLE, pc);
+                  luaK_exp2nextreg(ls->fs, t);  
+                  fieldcnt++;
+                  init = 1;
+              }
+             recfield(ls, &cc);
+              break;
+            }
+            default: {
+              //listfield(ls, &cc);
               expr(ls, &cc.v);
               checklimit(ls->fs, cc.na, MAX_INT, "items in a tableconstructor");
               cc.na++;
               cc.tostore++;
-          break;
-        }
-        case '[': {
-          recfield(ls, &cc);
-          break;
-        }
-        default: {
-          //listfield(ls, &cc);
-          expr(ls, &cc.v);
-          checklimit(ls->fs, cc.na, MAX_INT, "items in a tableconstructor");
-          cc.na++;
-          cc.tostore++;
 
-          break;
-        }
+              break;
+            }
+          }
       }
 
       if (ls->t.token != ','){
@@ -806,15 +825,14 @@ static void tableconstructor (LexState *ls, expdesc *t) {
       }
       else {
         luaX_next(ls);
-        cnt++;
+        fieldcnt++;
       }
   } while (!done); //(testnext(ls, ',') || testnext(ls, ';'));
 
   check_match(ls, ')', '(', line);
   
-  if (cnt) {
+  if (fieldcnt) {
       //lastlistfield(fs, &cc);
-      printf("table... ");
       if (cc.tostore != 0) {
           if (hasmultret(cc.v.k)) {
             luaK_setmultret(fs, &cc.v);
@@ -914,7 +932,9 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
     case '(': {  /* funcargs -> `(' [ explist ] `)' */
       luaX_next(ls);
       if (ls->t.token == ')')  /* arg list is empty? */
+        {
         args.k = VVOID;
+        }
       else {
         explist(ls, &args);
         luaK_setmultret(fs, &args);
@@ -1048,7 +1068,6 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       }
       case '(': 
       case TK_STRING: 
-      case '{': //ToDo: Remove
       {  /* funcargs */
         luaK_exp2nextreg(fs, v);
         funcargs(ls, v, line);
@@ -1093,11 +1112,10 @@ static void simpleexp (LexState *ls, expdesc *v) {
       init_exp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 1, 0));
       break;
     }
-    //case '(': table or suffixexp... 
-    case '{': {  /* tableconstructor */
-      tableconstructor(ls, v);
-      return;
-    }
+    //case '{': {  /* tableconstructor */
+    //  tableconstructor(ls, v);
+    //  return;
+    //}
     case TK_FUNCTION: {
       luaX_next(ls);
       body(ls, v, 0, ls->linenumber);
@@ -1195,7 +1213,6 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
 
 
 static void expr (LexState *ls, expdesc *v) {
-  if (ls->t.token != ')') //TEH - Catch a null table expression
      subexpr(ls, v, 0);
 }
 
