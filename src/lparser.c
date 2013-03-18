@@ -1072,8 +1072,8 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       {  /* funcargs */
         expdesc key;
         luaK_exp2nextreg(fs, v); //Add call
-        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
-        luaK_exp2nextreg(fs, &key);
+//        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
+//        luaK_exp2nextreg(fs, &key);
 
         funcargs(ls, v, line);
         break;
@@ -1123,8 +1123,8 @@ static void simpleexp (LexState *ls, expdesc *v) {
     //}
     case TK_FUNCTION: {
       luaX_next(ls);
-      //body(ls, v, 0, ls->linenumber);
-      body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
+      body(ls, v, 0, ls->linenumber);
+      //body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
       return;
     }
     default: {
