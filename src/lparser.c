@@ -294,6 +294,15 @@ static int singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
   }
 }
 
+static void new_global (LexState *ls, expdesc *var, const char *string){
+	FuncState *fs = ls->fs;
+	expdesc key;
+	 TString *varname =luaX_newstring(ls,string,strlen(string));
+    singlevaraux(fs, ls->envn, var, 1);  /* get environment variable */
+    lua_assert(var->k == VLOCAL || var->k == VUPVAL);
+    codestring(ls, &key, varname);  /* key is variable name */
+    luaK_indexed(fs, var, &key);  /* env[varname] */
+}
 
 static void singlevar (LexState *ls, expdesc *var) {
   TString *varname = str_checkname(ls);
@@ -1062,9 +1071,10 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       case TK_STRING: 
       {  /* funcargs */
         expdesc key;
-        //codestring(ls,&key,luaX_newstring(ls,"cys",3));
-        luaK_exp2nextreg(fs, v);
-        //luaK_self(fs, v, &key);
+        luaK_exp2nextreg(fs, v); //Add call
+        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
+        luaK_exp2nextreg(fs, &key);
+
         funcargs(ls, v, line);
         break;
       }
@@ -1113,9 +1123,8 @@ static void simpleexp (LexState *ls, expdesc *v) {
     //}
     case TK_FUNCTION: {
       luaX_next(ls);
-      body(ls, v, 0, ls->linenumber);
-        //ToDo: All functions have self parameter
-      //body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
+      //body(ls, v, 0, ls->linenumber);
+      body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
       return;
     }
     default: {
