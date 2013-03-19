@@ -145,6 +145,13 @@ static TString *str_checkname (LexState *ls) {
   return ts;
 }
 
+static TString *str_checklabel (LexState *ls) {
+  TString *ts;
+  check(ls, TK_LABEL);
+  ts = ls->t.seminfo.ts;
+  luaX_next(ls);
+  return ts;
+}
 
 static void init_exp (expdesc *e, expkind k, int i) {
   e->f = e->t = NO_JUMP;
@@ -162,6 +169,9 @@ static void checkname (LexState *ls, expdesc *e) {
   codestring(ls, e, str_checkname(ls));
 }
 
+static void checklabel (LexState *ls, expdesc *e) {
+  codestring(ls, e, str_checklabel(ls));
+}
 
 static int registerlocalvar (LexState *ls, TString *varname) {
   FuncState *fs = ls->fs;
@@ -668,7 +678,7 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
   }
   else  /* ls->t.token == '[' */
     yindex(ls, &key);
-
+  
   cc->nh++;
   checknext(ls, ':');
   rkkey = luaK_exp2RK(fs, &key);
@@ -720,11 +730,11 @@ static void field (LexState *ls, struct ConsControl *cc) {
       if (luaX_lookahead(ls) != ':')  /* expression? */
         listfield(ls, cc);
       else
-        recfield(ls, cc);
+        //recfield(ls, cc);
       break;
     }
     case '[': {
-      recfield(ls, cc);
+      //recfield(ls, cc);
       break;
     }
     default: {
@@ -789,14 +799,28 @@ static void tableconstructor (LexState *ls, expdesc *t) {
           switch(ls->t.token) {
             case TK_NAME: {  /* may be 'listfield' or 'recfield' */
               if (luaX_lookahead(ls) == ':') {  /* expression? */
-                  if( init==0){
-                      pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-                      init_exp(t, VRELOCABLE, pc);
-                      luaK_exp2nextreg(ls->fs, t);  
-                      fieldcnt++;
-                      init = 1;
-                  }
-                recfield(ls, &cc);
+                    if( init==0){
+                        pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+                        init_exp(t, VRELOCABLE, pc);
+                        luaK_exp2nextreg(ls->fs, t);  
+                        fieldcnt++;
+                        init = 1;
+                    }
+                    expdesc key;
+                    checklimit(fs, cc.nh, MAX_INT, "items in a tableconstructor");
+                    checkname(ls, &key);
+
+                    checknext(ls, ':');
+                    cc.nh++;
+                    //recfield(ls, &cc, &key);
+                    FuncState *fs = ls->fs;
+                    int reg = ls->fs->freereg;
+                    expdesc val;//key, val;
+                    int rkkey;
+                    rkkey = luaK_exp2RK(fs, &key);
+                    expr(ls, &val);
+                    luaK_codeABC(fs, OP_SETTABLE, cc.t->u.info, rkkey, luaK_exp2RK(fs, &val));
+                    fs->freereg = reg;  /* free registers */
               }
               else
               //  listfield(ls, &cc);
@@ -806,15 +830,52 @@ static void tableconstructor (LexState *ls, expdesc *t) {
                   cc.tostore++;
               break;
             }
+            case TK_LABEL: {  /* may be 'listfield' or 'recfield' */
+                    if( init==0){
+                        pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+                        init_exp(t, VRELOCABLE, pc);
+                        luaK_exp2nextreg(ls->fs, t);  
+                        fieldcnt++;
+                        init = 1;
+                    }
+                    expdesc key;
+                    checklimit(fs, cc.nh, MAX_INT, "items in a tableconstructor");
+                    checklabel(ls, &key);
+                    cc.nh++;
+                    //init_exp(v, VEMPTY, 0);
+                    //recfield(ls, &cc, &key);
+                    FuncState *fs = ls->fs;
+                    int reg = ls->fs->freereg;
+                    expdesc val;//key, val;
+                    int rkkey;
+                    rkkey = luaK_exp2RK(fs, &key);
+                    expr(ls, &val);
+                    luaK_codeABC(fs, OP_SETTABLE, cc.t->u.info, rkkey, luaK_exp2RK(fs, &val));
+                    fs->freereg = reg;  /* free registers */
+                    break;
+              }
             case '[': {
-               if( init==0){
+              if( init==0){
                   pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
                   init_exp(t, VRELOCABLE, pc);
                   luaK_exp2nextreg(ls->fs, t);  
                   fieldcnt++;
                   init = 1;
               }
-             recfield(ls, &cc);
+                expdesc key;
+
+                yindex(ls, &key);
+
+                checknext(ls, ':');
+                //recfield(ls, &cc,&key);
+                FuncState *fs = ls->fs;
+                int reg = ls->fs->freereg;
+                expdesc val;//key, val;
+                int rkkey;
+                rkkey = luaK_exp2RK(fs, &key);
+                expr(ls, &val);
+                luaK_codeABC(fs, OP_SETTABLE, cc.t->u.info, rkkey, luaK_exp2RK(fs, &val));
+                fs->freereg = reg;  /* free registers */
               break;
             }
             default: {
