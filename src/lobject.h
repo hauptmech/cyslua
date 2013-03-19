@@ -190,7 +190,9 @@ typedef struct lua_TValue TValue;
 
 #define changenvalue(o,x)	check_exp(ttisnumber(o), num_(o)=(x))
 
+
 #define setnilvalue(obj) settt_(obj, LUA_TNIL)
+#define setemptyvalue(obj) settt_(obj, LUA_TEMPTYKEY)
 
 #define setfvalue(obj,x) \
   { TValue *io=(obj); val_(io).f=(x); settt_(io, LUA_TLCF); }
