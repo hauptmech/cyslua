@@ -268,9 +268,10 @@ void luaK_checkstack (FuncState *fs, int n) {
 }
 
 
-void luaK_reserveregs (FuncState *fs, int n) {
+int luaK_reserveregs (FuncState *fs, int n) {
   luaK_checkstack(fs, n);
   fs->freereg += n;
+  return fs->freereg - 1;
 }
 
 
@@ -418,7 +419,9 @@ static int code_label (FuncState *fs, int A, int b, int jump) {
   return luaK_codeABC(fs, OP_LOADBOOL, A, b, jump);
 }
 
-
+/*
+ * If RELOC e hold pc and A is set to reg
+ */
 static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
   luaK_dischargevars(fs, e);
   switch (e->k) {
@@ -488,7 +491,9 @@ static void exp2reg (FuncState *fs, expdesc *e, int reg) {
   e->u.info = reg;
   e->k = VNONRELOC;
 }
-
+void luaK_exp2reg (FuncState *fs, expdesc *e, int reg) {
+    exp2reg(fs,e,reg);   
+ }
 
 void luaK_exp2nextreg (FuncState *fs, expdesc *e) {
   luaK_dischargevars(fs, e);
