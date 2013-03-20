@@ -1,0 +1,26 @@
+
+chunk <- ( statement ';'? )* (laststat ';'?)?
+block <- '{' statement* '}' 
+
+
+statement <- block / functioncall / varlist '=' explist  
+            / 'while' exp  block 
+            / 'repeat'  block 'until' exp
+            / 'if' exp  block  ('elseif' exp  block )* ('else'  block )?
+            / 'func' funcname? funcbody
+            / label 'func' funcbody
+            / label expr
+
+exp <- literal / '...' / function / prefixexp / exp binop exp / unop exp
+
+literal <- 'nil' / 'false' / 'true' / Number / String / LongString
+
+funcbody <- '(' parlist? ')' block  
+prefixexp <- var / functioncall 
+precidentexp <- '(' exp ')'
+tableconstructor <- '()' / '(' exp ',' ')' / '(' exp (','? exp )* ','? ')'
+functioncall <- prefixexp args 
+args <- '(' explist? ')' / string
+
+
+
