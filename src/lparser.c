@@ -663,7 +663,6 @@ struct ConsControl {
   int nh;  /* total number of `record' elements */
   int na;  /* total number of array elements */
   int tostore;  /* number of array elements pending to be stored */
-  int was_table; /* 1 if we figured out the expression was a table */
 };
 
 
@@ -755,55 +754,27 @@ static void tableconstructor (LexState *ls, expdesc *table) {
   struct ConsControl cc;
   int fieldcnt = 0,init=0;
   int done = 0;
-  expdesc store;
-  //store = *table;
-  cc.na = cc.nh = cc.tostore = cc.was_table = 0;
-  cc.table = table;// &store;
-  init_exp(&cc.v, VVOID, 1);  /* no value (yet) */
-  int thistest = tmptest++;
 
-
-  
-
-/* fix it at stack top */
+  cc.na = cc.nh = cc.tostore  = 0;
+  cc.table = table;
+  init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
 
   checknext(ls, '(');
-/*  
-  pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-  init_exp(table, VRELOCABLE, pc);
+  
   int expr_reg = luaK_reserveregs(ls->fs,1);
-  luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
-*/  
-int expr_reg = luaK_reserveregs(ls->fs,1);
+  
   do {
     lua_assert(cc.v.k == VVOID || cc.tostore > 0);
     if (ls->t.token == ')') { //// () empty list
-        /*if((fieldcnt==0 || fieldcnt==1) && init==0){
-            printf("newtable0");
-          pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-          init_exp(table, VRELOCABLE, pc);
-          luaK_exp2nextreg(ls->fs, table);  
-          init=1;
+        if(fieldcnt==0 ){
           fieldcnt=1; //If cnt was 0 then we are an empty table,
-        }*/
+        }
     }
     else{
         //closelistfield(fs, &cc);
         if (cc.v.k != VVOID) {  /* there is no list item */
-          /*if(fieldcnt==1 && init==0){
-              
-              pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-              init_exp(table, VRELOCABLE, pc);
-              luaK_exp2nextreg(ls->fs, table);  
-              init=1;
-              printf("new %d %d ",cc.table->u.info,pc);
-          }*/
             luaK_exp2nextreg(fs, &cc.v);
             cc.v.k = VVOID;
-            if (cc.tostore == LFIELDS_PER_FLUSH) {
-              luaK_setlist(fs, cc.table->u.info, cc.na, cc.tostore);  /* flush */
-              cc.tostore = 0;  /* no more items pending */
-            }
         }
 
         //field(ls, &cc);
@@ -811,14 +782,6 @@ int expr_reg = luaK_reserveregs(ls->fs,1);
           switch(ls->t.token) {
             case TK_NAME: {  /* may be 'listfield' or 'recfield' */
               if (luaX_lookahead(ls) == ':') {  /* expression? */
-                    if( init==0){
-                        printf("newtable3");
-                        pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-                        init_exp(table, VRELOCABLE, pc);
-                        luaK_exp2nextreg(ls->fs, table);  
-                        fieldcnt++;
-                        init = 1;
-                    }
                     expdesc key;
                     checklimit(fs, cc.nh, MAX_INT, "items in a tableconstructor");
                     checkname(ls, &key);
@@ -844,14 +807,6 @@ int expr_reg = luaK_reserveregs(ls->fs,1);
               break;
             }
             case TK_LABEL: {  /* may be 'listfield' or 'recfield' */
-                    if( init==0){
-                        printf("newtable4");
-                        pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-                        init_exp(table, VRELOCABLE, pc);
-                        luaK_exp2nextreg(ls->fs, table);  
-                        fieldcnt++;
-                        init = 1;
-                    }
                     expdesc key;
                     checklimit(fs, cc.nh, MAX_INT, "items in a tableconstructor");
                     checklabel(ls, &key);
@@ -869,14 +824,6 @@ int expr_reg = luaK_reserveregs(ls->fs,1);
                     break;
               }
             case '[': {
-              if( init==0){
-                  printf("newtable5");
-                  pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-                  init_exp(table, VRELOCABLE, pc);
-                  luaK_exp2nextreg(ls->fs, table);  
-                  fieldcnt++;
-                  init = 1;
-              }
                 expdesc key;
 
                 yindex(ls, &key);
@@ -905,13 +852,12 @@ int expr_reg = luaK_reserveregs(ls->fs,1);
           }
       }
 
-      if (ls->t.token != ','){
+      if (ls->t.token == ')'){
         done = 1;
       }
       else {
-        //if(ls->t.token == ',') //absorb commas
+        if(ls->t.token == ',') //absorb commas
           luaX_next(ls);
-        cc.was_table = 1;
         fieldcnt++;
       }
   } while (!done); //(testnext(ls, ',') || testnext(ls, ';'));
@@ -920,11 +866,11 @@ int expr_reg = luaK_reserveregs(ls->fs,1);
   
   if (fieldcnt) {
       //lastlistfield(fs, &cc);
-
+    pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+    init_exp(table, VRELOCABLE, pc);
+    luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
       if (cc.tostore != 0) { 
-        pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-        init_exp(table, VRELOCABLE, pc);
-        luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
+
         
           if (hasmultret(cc.v.k)) {
             luaK_setmultret(fs, &cc.v);
@@ -944,7 +890,7 @@ int expr_reg = luaK_reserveregs(ls->fs,1);
       //*table = cc.v;
   }
   else { //normal expression
-    luaK_nil(fs,pc,1);
+    //luaK_nil(fs,pc,1);
     luaK_dischargevars(fs, &cc.v);
     *table = cc.v;  //Maksure our expdesc has the correct info
   }
