@@ -791,10 +791,12 @@ void luaV_execute (lua_State *L) {
       )
       vmcasenb(OP_TFORCALL,
         StkId cb = ra + 3;  /* call base */
-        setobjs2s(L, cb+2, ra+2);
+        setobjs2s(L, cb+3, ra+2);
+        setobjs2s(L, cb+2, ra+1);
         setobjs2s(L, cb+1, ra+1);
         setobjs2s(L, cb, ra);
-        L->top = cb + 3;  /* func. + 2 args (state and index) */
+        //setnilvalue(ra+3);
+        L->top = cb + 4;  /* func. + 2 args (state and index) */
         Protect(luaD_call(L, cb, GETARG_C(i), 1));
         L->top = ci->top;
         i = *(ci->u.l.savedpc++);  /* go to next instruction */

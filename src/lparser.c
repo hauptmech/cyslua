@@ -1133,8 +1133,8 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       {  /* funcargs */
         expdesc key;
         luaK_exp2nextreg(fs, v); //Add call
-//        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
-//        luaK_exp2nextreg(fs, &key);
+        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
+        luaK_exp2nextreg(fs, &key);
 
         funcargs(ls, v, line);
         break;
@@ -1184,8 +1184,8 @@ static void simpleexp (LexState *ls, expdesc *v) {
     //}
     case TK_FUNCTION: {
       luaX_next(ls);
-      body(ls, v, 0, ls->linenumber);
-      //body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
+      //body(ls, v, 0, ls->linenumber);
+      body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
       return;
     }
     default: {
@@ -1647,6 +1647,17 @@ static void localfunc (LexState *ls) {
 }
 
 
+static void locallabelfunc (LexState *ls) {
+  expdesc b;
+  FuncState *fs = ls->fs;
+  new_localvar(ls, str_checklabel(ls));  /* new local variable */
+  adjustlocalvars(ls, 1);  /* enter its scope */
+  luaX_next(ls);
+  body(ls, &b, 1, ls->linenumber);  /* function created in next register */
+  /* debug information will only see the variable after this point! */
+  getlocvar(fs, b.u.info)->startpc = fs->pc;
+}
+
 static void localstat (LexState *ls) {
   /* stat -> LOCAL NAME {`,' NAME} [`=' explist] */
   int nvars = 0;
@@ -1662,6 +1673,23 @@ static void localstat (LexState *ls) {
     e.k = VVOID;
     nexps = 0;
   }
+  adjust_assign(ls, nvars, nexps, &e);
+  adjustlocalvars(ls, nvars);
+}
+
+
+static void locallabelstat (LexState *ls) {
+  /* stat ->  NAME: {`,' NAME} [`=' explist] */
+  int nvars = 0;
+  int nexps;
+  expdesc e;
+  do {
+    new_localvar(ls, str_checklabel(ls));
+    nvars++;
+  } while (testnext(ls, ','));
+  //checknext(ls, '=');
+  nexps = explist(ls, &e);
+
   adjust_assign(ls, nvars, nexps, &e);
   adjustlocalvars(ls, nvars);
 }
@@ -1790,6 +1818,15 @@ static void statement (LexState *ls) {
         localfunc(ls);
       else
         localstat(ls);
+      break;
+    }
+    case TK_LABEL: {  /* stat -> labelstat */
+      //luaX_next(ls);  /* skip LOCAL */
+      luaX_lookahead(ls);
+      if (ls->lookahead.token == TK_FUNCTION)  /* local function? */
+        locallabelfunc(ls);
+      else
+        locallabelstat(ls);
       break;
     }
     case TK_DBCOLON: {  /* stat -> label */

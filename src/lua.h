@@ -50,7 +50,8 @@
 #define LUA_ERRGCMM	5
 #define LUA_ERRERR	6
 
-
+#define LUA_ALWAYS_SELF lua_remove(L,1);
+//#define LUA_ALWAYS_SELF 
 typedef struct lua_State lua_State;
 
 typedef int (*lua_CFunction) (lua_State *L);
