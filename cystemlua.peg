@@ -2,7 +2,7 @@
 chunk <- ( statement ';'? )* (laststat ';'?)?
 block <- '{' statement* '}' 
 
-
+laststat <- 'return' explist? / 'break'
 statement <- block / functioncall / varlist '=' explist  
             / 'while' exp  block 
             / 'repeat'  block 'until' exp
@@ -11,16 +11,22 @@ statement <- block / functioncall / varlist '=' explist
             / label 'func' funcbody
             / label expr
 
-exp <- literal / '...' / function / prefixexp / exp binop exp / unop exp
+var <- name ( '.' name / indexexp)*
+namelist <- name ('.' name)*
+explist <- exp (',' exp)*
 
+exp <- literal / vararg / function / tableconstructor / suffixexp / unop exp / exp binop exp
+suffixexp <- (name / '(' exp ')') ( '.' name / indexexp / args)*
 literal <- 'nil' / 'false' / 'true' / Number / String / LongString
 
-funcbody <- '(' parlist? ')' block  
-prefixexp <- var / functioncall 
-precidentexp <- '(' exp ')'
-tableconstructor <- '()' / '(' exp ',' ')' / '(' exp (','? exp )* ','? ')'
+funcname <- name ('.' name)*
+funcbody <- '(' (namelist (',' vararg)? / vararg)? ')' block  
+
 functioncall <- prefixexp args 
 args <- '(' explist? ')' / string
-
-
-
+tableconstructor <- '()' / '(' field ',' ')' / '(' field (','? field )* ','? ')'
+field <- indexexp ':' exp / name ':' exp / exp
+indexexp <- '[' exp ']'
+vararg <- '...'
+binop <- [+-*/^%<>=] / '..' / '<=' / '>=' / '==' / '~=' / 'and' / 'or'
+unop <- '-' / 'not' / '#'
