@@ -807,11 +807,19 @@ static void tableconstructor (LexState *ls, expdesc *table) {
               break;
             }
             case TK_LABEL: {  /* may be 'listfield' or 'recfield' */
+                    if( init==0){
+                        pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+                        init_exp(table, VRELOCABLE, pc);
+                        
+                        luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
+                        fieldcnt++;
+                        init = 1;
+                    }
                     expdesc key;
                     checklimit(fs, cc.nh, MAX_INT, "items in a tableconstructor");
                     checklabel(ls, &key);
                     cc.nh++;
-                    //init_exp(v, VEMPTY, 0);
+
                     //recfield(ls, &cc, &key);
                     FuncState *fs = ls->fs;
                     int reg = ls->fs->freereg;
@@ -824,6 +832,14 @@ static void tableconstructor (LexState *ls, expdesc *table) {
                     break;
               }
             case '[': {
+                if( init==0){
+                    pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+                    init_exp(table, VRELOCABLE, pc);
+                    
+                    luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
+                    fieldcnt++;
+                    init = 1;
+                }
                 expdesc key;
 
                 yindex(ls, &key);
@@ -860,15 +876,17 @@ static void tableconstructor (LexState *ls, expdesc *table) {
           luaX_next(ls);
         fieldcnt++;
       }
-  } while (!done); //(testnext(ls, ',') || testnext(ls, ';'));
+  } while (!done); 
 //dump = func(x){for i,j in pairs(x){print(i,j)}}
   check_match(ls, ')', '(', line);
   
   if (fieldcnt) {
       //lastlistfield(fs, &cc);
-    pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
-    init_exp(table, VRELOCABLE, pc);
-    luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
+    if (!init){
+        pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+        init_exp(table, VRELOCABLE, pc);
+        luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
+    }
       if (cc.tostore != 0) { 
 
         
@@ -938,7 +956,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   open_func(ls, &new_fs, &bl);
   checknext(ls, '(');
   if (ismethod) {
-    new_localvarliteral(ls, "self");  /* create 'self' parameter */
+    new_localvarliteral(ls, "my");  /* create 'self' parameter */
     adjustlocalvars(ls, 1);
   }
   parlist(ls);
@@ -1677,17 +1695,12 @@ static void locallabelstat (LexState *ls) {
 
 static int funcname (LexState *ls, expdesc *v) {
   /* funcname -> NAME {fieldsel} [`:' NAME] */
-  int ismethod = 0;
+  int ismethod = 1; //TEH - All function calls are as 'methods' now
   singlevar(ls, v);
   while (ls->t.token == '.'){
     ismethod = 1;
     fieldsel(ls, v);
   }
-  if (ls->t.token == ':') { // ToDo: Remove
-    ismethod = 1;
-    fieldsel(ls, v);
-  }
-//TODO: Every function name is a method
   return ismethod;
 }
 
@@ -1708,9 +1721,9 @@ static void exprstat (LexState *ls, int is_functiondef) {
   /* stat -> func | assignment */
   FuncState *fs = ls->fs;
   struct LHS_assign v;
+  
   expr(ls,&v.v);
-  //primaryexp(ls, &v.v); //TEH - Adding in primaryexp
-  //suffixedexp(ls, &v.v);
+
   if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
     v.prev = NULL;
     assignment(ls, &v, 1);
@@ -1801,15 +1814,6 @@ static void statement (LexState *ls, int is_functiondef) {
       funcstat(ls, line);
       break;
     }
-    //ToDo: Remove TK_LOCAL
-    case TK_LOCAL: {  /* stat -> localstat */
-      luaX_next(ls);  /* skip LOCAL */
-      if (testnext(ls, TK_FUNCTION))  /* local function? */
-        localfunc(ls);
-      else
-        localstat(ls);
-      break;
-    }
     case TK_LABEL: {  /* stat -> labelstat */
       //luaX_next(ls);  /* skip LOCAL */
       luaX_lookahead(ls);
@@ -1819,11 +1823,6 @@ static void statement (LexState *ls, int is_functiondef) {
         labelstat(ls, str_checklabel(ls), line);
       else
         locallabelstat(ls);
-      break;
-    }
-    case TK_DBCOLON: {  /* stat -> label */
-      luaX_next(ls);  /* skip double colon */
-      labelstat(ls, str_checkname(ls), line);
       break;
     }
     case TK_RETURN: {  /* stat -> retstat */
