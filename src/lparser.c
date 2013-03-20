@@ -53,7 +53,7 @@ typedef struct BlockCnt {
 /*
 ** prototypes for recursive non-terminal functions
 */
-static void statement (LexState *ls);
+static void statement (LexState *ls, int is_functiondef);
 static void expr (LexState *ls, expdesc *v);
 
 
@@ -618,14 +618,14 @@ static int block_follow (LexState *ls, int withuntil) {
 }
 
 
-static void statlist (LexState *ls) {
+static void statlist (LexState *ls, int is_functiondef) {
   /* statlist -> { stat [`;'] } */
   while (!block_follow(ls, 1)) {
     if (ls->t.token == TK_RETURN) {
-      statement(ls);
+      statement(ls, is_functiondef);
       return;  /* 'return' must be last statement */
     }
-    statement(ls);
+    statement(ls, is_functiondef);
   }
 }
 
@@ -974,7 +974,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   parlist(ls);
   checknext(ls, ')');
   checknext(ls,TK_DO);
-  statlist(ls);
+  statlist(ls,1);
   new_fs.f->lastlinedefined = ls->linenumber;
   check_match(ls, TK_END, TK_FUNCTION, line);
   codeclosure(ls, e);
@@ -1299,7 +1299,7 @@ static void block (LexState *ls) {
   FuncState *fs = ls->fs;
   BlockCnt bl;
   enterblock(fs, &bl, 0);
-  statlist(ls);
+  statlist(ls,0);
   leaveblock(fs);
 }
 
@@ -1422,9 +1422,9 @@ static void checkrepeated (FuncState *fs, Labellist *ll, TString *label) {
 
 
 /* skip no-op statements */
-static void skipnoopstat (LexState *ls) {
+static void skipnoopstat (LexState *ls,int is_functiondef) {
   while (ls->t.token == ';' || ls->t.token == TK_DBCOLON)
-    statement(ls);
+    statement(ls,is_functiondef);
 }
 
 
@@ -1437,7 +1437,7 @@ static void labelstat (LexState *ls, TString *label, int line) {
   checknext(ls, TK_DBCOLON);  /* skip double colon */
   /* create new entry for this label */
   l = newlabelentry(ls, ll, label, line, fs->pc);
-  skipnoopstat(ls);  /* skip other no-op statements */
+  skipnoopstat(ls,0);  /* skip other no-op statements */
   if (block_follow(ls, 0)) {  /* label is last no-op statement in the block? */
     /* assume that locals are already out of scope */
     ll->arr[l].nactvar = fs->bl->nactvar;
@@ -1474,7 +1474,7 @@ static void repeatstat (LexState *ls, int line) {
   enterblock(fs, &bl1, 1);  /* loop block */
   enterblock(fs, &bl2, 0);  /* scope block */
   luaX_next(ls);  /* skip REPEAT */
-  statlist(ls);
+  statlist(ls,0);
   check_match(ls, TK_UNTIL, TK_REPEAT, line);
   condexit = cond(ls);  /* read condition (inside scope block) */
   if (bl2.upval)  /* upvalues? */
@@ -1587,20 +1587,20 @@ static void forstat (LexState *ls, int line) {
 }
 
 
-static void test_then_block (LexState *ls, int *escapelist) {
-  /* test_then_block -> [IF | ELSEIF] cond THEN block */
+static void test_then_block (LexState *ls, int *escapelist, int line) {
+  /* test_then_block -> [IF | ELSEIF] cond '{' block */
   BlockCnt bl;
   FuncState *fs = ls->fs;
   expdesc v;
   int jf;  /* instruction to skip 'then' code (if condition is false) */
   luaX_next(ls);  /* skip IF or ELSEIF */
   expr(ls, &v);  /* read condition */
-  checknext(ls, TK_THEN);
+  checknext(ls, TK_DO);
   if (ls->t.token == TK_GOTO || ls->t.token == TK_BREAK) {
     luaK_goiffalse(ls->fs, &v);  /* will jump to label if condition is true */
     enterblock(fs, &bl, 0);  /* must enter block before 'goto' */
     gotostat(ls, v.t);  /* handle goto/break */
-    skipnoopstat(ls);  /* skip other no-op statements */
+    skipnoopstat(ls,0);  /* skip other no-op statements */
     if (block_follow(ls, 0)) {  /* 'goto' is the entire block? */
       leaveblock(fs);
       return;  /* and that is it */
@@ -1613,25 +1613,35 @@ static void test_then_block (LexState *ls, int *escapelist) {
     enterblock(fs, &bl, 0);
     jf = v.f;
   }
-  statlist(ls);  /* `then' part */
+  statlist(ls,0);  /* `then' part */
   leaveblock(fs);
+  
+  check_match(ls,TK_END,TK_DO,line);   //we have to provide an incomplete line error to the interpreter.
+  
   if (ls->t.token == TK_ELSE ||
       ls->t.token == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
     luaK_concat(fs, escapelist, luaK_jump(fs));  /* must jump over it */
   luaK_patchtohere(fs, jf);
 }
 
-
+//ToDo: lua interpreter does not handle two sequential lines of if statement
+//workaround is to put compound if statements inside a {} block 
 static void ifstat (LexState *ls, int line) {
-  /* ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END */
+  /* ifstat -> IF cond '{' block {ELSEIF cond THEN block} [ELSE block] '}' */
   FuncState *fs = ls->fs;
   int escapelist = NO_JUMP;  /* exit list for finished parts */
-  test_then_block(ls, &escapelist);  /* IF cond THEN block */
+  test_then_block(ls, &escapelist, line);  /* IF cond THEN block */
+
   while (ls->t.token == TK_ELSEIF)
-    test_then_block(ls, &escapelist);  /* ELSEIF cond THEN block */
-  if (testnext(ls, TK_ELSE))
+    test_then_block(ls, &escapelist, line);  /* ELSEIF cond THEN block */
+  if (ls->t.token == TK_ELSE){
+    testnext(ls,TK_ELSE);
+    testnext(ls,TK_DO);
     block(ls);  /* `else' part */
-  check_match(ls, TK_END, TK_IF, line);
+    check_match(ls,TK_END,TK_DO,line);
+  }
+  
+  //check_match(ls, TK_END, TK_IF, line);
   luaK_patchtohere(fs, escapelist);  /* patch escape list to 'if' end */
 }
 
@@ -1724,19 +1734,28 @@ static void funcstat (LexState *ls, int line) {
 }
 
 
-static void exprstat (LexState *ls) {
+static void exprstat (LexState *ls, int is_functiondef) {
   /* stat -> func | assignment */
   FuncState *fs = ls->fs;
   struct LHS_assign v;
-  primaryexp(ls, &v.v); //TEH - Adding in primaryexp
-  suffixedexp(ls, &v.v);
+  expr(ls,&v.v);
+  //primaryexp(ls, &v.v); //TEH - Adding in primaryexp
+  //suffixedexp(ls, &v.v);
   if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
     v.prev = NULL;
     assignment(ls, &v, 1);
   }
   else {  /* stat -> func */
-    check_condition(ls, v.v.k == VCALL, "syntax error, expected an assignment or function call");
-    SETARG_C(getcode(fs, &v.v), 1);  /* call statement uses no results */
+    //check_condition(ls, v.v.k == VCALL, "syntax error, expected an assignment or function call");
+    if (v.v.k == VCALL)
+      SETARG_C(getcode(fs, &v.v), 1);  /* call statement uses no results */
+      
+    if (is_functiondef && ls->t.token == TK_END){ //In a function definition the last expression is an automatic return
+        expdesc e;
+        int first, nret;  /* registers with returned values */
+        first = luaK_exp2anyreg(fs, &v.v);
+        luaK_ret(fs, first, 1);
+    }
   }
 }
 
@@ -1774,7 +1793,7 @@ static void retstat (LexState *ls) {
 }
 
 
-static void statement (LexState *ls) {
+static void statement (LexState *ls, int is_functiondef) {
   int line = ls->linenumber;  /* may be needed for error messages */
   enterlevel(ls);
   switch (ls->t.token) {
@@ -1812,6 +1831,7 @@ static void statement (LexState *ls) {
       funcstat(ls, line);
       break;
     }
+    //ToDo: Remove TK_LOCAL
     case TK_LOCAL: {  /* stat -> localstat */
       luaX_next(ls);  /* skip LOCAL */
       if (testnext(ls, TK_FUNCTION))  /* local function? */
@@ -1845,7 +1865,7 @@ static void statement (LexState *ls) {
       break;
     }
     default: {  /* stat -> func | assignment */
-      exprstat(ls);
+      exprstat(ls, is_functiondef);
       break;
     }
   }
@@ -1870,7 +1890,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   init_exp(&v, VLOCAL, 0);  /* create and... */
   newupvalue(fs, ls->envn, &v);  /* ...set environment upvalue */
   luaX_next(ls);  /* read first token */
-  statlist(ls);  /* parse main body */
+  statlist(ls,0);  /* parse main body */
   check(ls, TK_EOS);
   close_func(ls);
 }
