@@ -1434,7 +1434,7 @@ static void labelstat (LexState *ls, TString *label, int line) {
   Labellist *ll = &ls->dyd->label;
   int l;  /* index of new label being created */
   checkrepeated(fs, ll, label);  /* check for repeated labels */
-  checknext(ls, TK_DBCOLON);  /* skip double colon */
+  checknext(ls, ':');  /* skip double colon */
   /* create new entry for this label */
   l = newlabelentry(ls, ll, label, line, fs->pc);
   skipnoopstat(ls,0);  /* skip other no-op statements */
@@ -1845,6 +1845,8 @@ static void statement (LexState *ls, int is_functiondef) {
       luaX_lookahead(ls);
       if (ls->lookahead.token == TK_FUNCTION)  /* local function? */
         locallabelfunc(ls);
+      else if (ls->lookahead.token == ':')  /* lable statement */
+        labelstat(ls, str_checklabel(ls), line);
       else
         locallabelstat(ls);
       break;
