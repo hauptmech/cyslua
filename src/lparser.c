@@ -819,7 +819,12 @@ static void tableconstructor (LexState *ls, expdesc *table) {
                     checklimit(fs, cc.nh, MAX_INT, "items in a tableconstructor");
                     checklabel(ls, &key);
                     cc.nh++;
-
+                    
+                    /* //ToDo: if 'func' defined in place, capture it here so we can make it a self function
+                    if (l->t.token == TK_FUNCTION) {
+                      luaX_next(ls);
+                      body(ls, v, 0, ls->linenumber);
+                    }*/
                     //recfield(ls, &cc, &key);
                     FuncState *fs = ls->fs;
                     int reg = ls->fs->freereg;
@@ -1081,9 +1086,9 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         expdesc key;
         luaX_next(ls);  /* skip the dot or colon */
         checkname(ls, &key);
-        if (ls->t.token == '(') {
+        if (ls->t.token == '(') { //If a call is comming add the self parameter
             luaK_exp2nextreg(fs, v);
-            luaK_self(fs, v, &key);
+            luaK_self(fs, v, &key); 
             funcargs(ls, v, line);
         }
         else {
@@ -1121,8 +1126,8 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       {  /* funcargs */
         expdesc key;
         luaK_exp2nextreg(fs, v); //Add call
-        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
-        luaK_exp2nextreg(fs, &key);
+//        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
+//        luaK_exp2nextreg(fs, &key);
 
         funcargs(ls, v, line);
         break;
@@ -1172,8 +1177,8 @@ static void simpleexp (LexState *ls, expdesc *v) {
     //}
     case TK_FUNCTION: {
       luaX_next(ls);
-      //body(ls, v, 0, ls->linenumber);
-      body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
+      body(ls, v, 0, ls->linenumber);
+      //body(ls, v, 1, ls->linenumber); //TEH - All function calls have self
       return;
     }
     default: {

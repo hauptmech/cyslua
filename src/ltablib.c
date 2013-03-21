@@ -22,7 +22,6 @@
 
 #if defined(LUA_COMPAT_MAXN)
 static int maxn (lua_State *L) {
-    LUA_ALWAYS_SELF
   lua_Number max = 0;
   luaL_checktype(L, 1, LUA_TTABLE);
   lua_pushnil(L);  /* first key */
@@ -40,7 +39,6 @@ static int maxn (lua_State *L) {
 
 
 static int tinsert (lua_State *L) {
-  LUA_ALWAYS_SELF
   int e = aux_getn(L, 1) + 1;  /* first empty element */
   int pos;  /* where to insert new element */
   switch (lua_gettop(L)) {
@@ -68,7 +66,6 @@ static int tinsert (lua_State *L) {
 
 
 static int tremove (lua_State *L) {
-    LUA_ALWAYS_SELF
   int e = aux_getn(L, 1);
   int pos = luaL_optint(L, 2, e);
   if (!(1 <= pos && pos <= e))  /* position is outside bounds? */
@@ -94,7 +91,6 @@ static void addfield (lua_State *L, luaL_Buffer *b, int i) {
 
 
 static int tconcat (lua_State *L) {
-    LUA_ALWAYS_SELF
   luaL_Buffer b;
   size_t lsep;
   int i, last;
@@ -121,7 +117,6 @@ static int tconcat (lua_State *L) {
 */
 
 static int pack (lua_State *L) {
-    LUA_ALWAYS_SELF
   int n = lua_gettop(L);  /* number of elements to pack */
   lua_createtable(L, n, 1);  /* create result table */
   lua_pushinteger(L, n);
@@ -139,7 +134,6 @@ static int pack (lua_State *L) {
 
 
 static int unpack (lua_State *L) {
-    LUA_ALWAYS_SELF
   int i, e, n;
   luaL_checktype(L, 1, LUA_TTABLE);
   i = luaL_optint(L, 2, 1);
@@ -251,7 +245,6 @@ static void auxsort (lua_State *L, int l, int u) {
 }
 
 static int sort (lua_State *L) {
-    LUA_ALWAYS_SELF
   int n = aux_getn(L, 1);
   luaL_checkstack(L, 40, "");  /* assume array is smaller than 2^40 */
   if (!lua_isnoneornil(L, 2))  /* is there a 2nd argument? */
