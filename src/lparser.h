@@ -19,7 +19,6 @@
 typedef enum {
   VVOID,	/* no value */
   VNIL,
-  VEMPTY,
   VTRUE,
   VFALSE,
   VK,		/* info = index of constant in `k' */
