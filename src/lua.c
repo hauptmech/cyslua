@@ -310,8 +310,6 @@ static void dotty (lua_State *L) {
       luaL_checkstack(L, LUA_MINSTACK, "too many results to print");
       lua_getglobal(L, "print");
       lua_insert(L, 1);
-      lua_pushnil(L);
-      lua_insert(L,2);
       if (lua_pcall(L, lua_gettop(L)-1, 0, 0) != LUA_OK)
         l_message(progname, lua_pushfstring(L,
                                "error calling " LUA_QL("print") " (%s)",
