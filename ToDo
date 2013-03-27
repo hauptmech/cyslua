@@ -4,23 +4,18 @@ Separate <unknown> indexs from <nil> values
 Table entries are ordered, integer indexing returns value at that position. Table entries can be without key...
  
 Method vs non-method calls
-    function a.b()      _ method def
-    a.b()               _ method call
-    a = (b: func(){})   _ table def
-   
+    _- Cystem (de)referencing -_ 
     a. _ Value a is a reference to
     _.a _ Reference used to point to a 
     .a _ Value is mutable
 
-  _ call without nil (compatibility)
-
-name args  _ no parent
-.module.name args  _ non method escape call
-func a.b() {} _ method def
-a: func(){}   _ non method def
-func a(){}    _ non method def
-(b:func(){} ) _ method def
-a.b() _ method call
+    name args  _ no parent
+    .module.name args  _ non method escape call
+    func a.b() {} _ method def
+    a: func(){}   _ non method def
+    func a(){}    _ non method def
+    (b:func(){} ) _ method def
+    a.b() _ method call
 
 
 Check for solutions to setlist when stack has grown a bit for tableconstructor

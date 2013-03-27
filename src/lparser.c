@@ -1075,9 +1075,16 @@ static void suffixedexp (LexState *ls, expdesc *v) {
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
   FuncState *fs = ls->fs;
   int line = ls->linenumber;
+  int is_not_method = 0;
   expdesc lastkey;
+
+  if (ls->t.token == '.'){
+    is_not_method = 1;
+    luaX_next(ls);
+  }
+
   init_exp(&lastkey, VVOID, 0);  /* no value (yet) */
-  //primaryexp(ls, v); //TEH - Brought in primaryexp
+  primaryexp(ls, v); //TEH - Brought in primaryexp
 
   for (;;) {
     switch (ls->t.token) {
@@ -1087,9 +1094,17 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         luaX_next(ls);  /* skip the dot or colon */
         checkname(ls, &key);
         if (ls->t.token == '(') { //If a call is comming add the self parameter
-            luaK_exp2nextreg(fs, v);
-            luaK_self(fs, v, &key); 
-            funcargs(ls, v, line);
+            if (!is_not_method){ //Automatically add self unless we started with '.'
+                luaK_exp2nextreg(fs, v);
+                luaK_self(fs, v, &key); 
+                funcargs(ls, v, line);
+            }
+            else {
+                luaK_exp2anyregup(fs, v);
+                luaK_indexed(fs, v, &key);
+                luaK_exp2nextreg(fs, v);
+                funcargs(ls, v, line);
+            }
         }
         else {
             luaK_exp2anyregup(fs, v);
@@ -1182,7 +1197,6 @@ static void simpleexp (LexState *ls, expdesc *v) {
       return;
     }
     default: {
-      primaryexp(ls, v); //TEH - Adding in primaryexp
       suffixedexp(ls, v);
       return;
     }
@@ -1347,7 +1361,6 @@ static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) {
   if (testnext(ls, ',')) {  /* assignment -> ',' suffixedexp assignment */
     struct LHS_assign nv;
     nv.prev = lh;
-    primaryexp(ls, &nv.v); //TEH - Adding in primaryexp
     suffixedexp(ls, &nv.v);
     if (nv.v.k != VINDEXED)
       check_conflict(ls, lh, &nv.v);
