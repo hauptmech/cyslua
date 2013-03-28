@@ -172,7 +172,7 @@ static void checkname (LexState *ls, expdesc *e) {
 static void checklabel (LexState *ls, expdesc *e) {
   codestring(ls, e, str_checklabel(ls));
 }
-
+/* Add name to list of local vars in prototype. Grow f->locvars if necessary */
 static int registerlocalvar (LexState *ls, TString *varname) {
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
@@ -212,7 +212,7 @@ static LocVar *getlocvar (FuncState *fs, int i) {
   return &fs->f->locvars[idx];
 }
 
-
+/* Set startpc for each local var */
 static void adjustlocalvars (LexState *ls, int nvars) {
   FuncState *fs = ls->fs;
   fs->nactvar = cast_byte(fs->nactvar + nvars);
@@ -910,10 +910,9 @@ static void tableconstructor (LexState *ls, expdesc *table) {
 
       SETARG_B(fs->f->code[pc], luaO_int2fb(cc.na)); /* set initial array size */
       SETARG_C(fs->f->code[pc], luaO_int2fb(cc.nh));  /* set initial table size */
-      //*table = cc.v;
   }
   else { //normal expression
-    //luaK_nil(fs,pc,1);
+    fs->freereg = expr_reg;
     luaK_dischargevars(fs, &cc.v);
     *table = cc.v;  //Maksure our expdesc has the correct info
   }
@@ -1050,13 +1049,7 @@ static void primaryexp (LexState *ls, expdesc *v) {
     case '(': {
       int line = ls->linenumber;
         // TEH tableconstructor generates possible expressions instead of expr...
-/*
-      luaX_next(ls);
-      expr(ls, v);
-*/
       tableconstructor(ls,v);
-      //check_match(ls, ')', '(', line);
-      //luaK_dischargevars(ls->fs, v);
       return;
     }
     case TK_NAME: {
@@ -1669,7 +1662,7 @@ static void locallabelfunc (LexState *ls) {
   new_localvar(ls, str_checklabel(ls));  /* new local variable */
   adjustlocalvars(ls, 1);  /* enter its scope */
   luaX_next(ls);
-  body(ls, &b, 1, ls->linenumber);  /* function created in next register */
+  body(ls, &b, 0, ls->linenumber);  /* function created in next register */
   /* debug information will only see the variable after this point! */
   getlocvar(fs, b.u.info)->startpc = fs->pc;
 }
@@ -1713,7 +1706,7 @@ static void locallabelstat (LexState *ls) {
 
 static int funcname (LexState *ls, expdesc *v) {
   /* funcname -> NAME {fieldsel} [`:' NAME] */
-  int ismethod = 1; //TEH - All function calls are as 'methods' now
+  int ismethod = 0; //TEH - All function calls are as 'methods' now
   singlevar(ls, v);
   while (ls->t.token == '.'){
     ismethod = 1;
