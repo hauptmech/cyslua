@@ -1,4 +1,8 @@
-_ Reverse "all calls have 'self'" to increase compatibility and reduce number of changes
+
+X a: (expr) does not work!
+    Table expressions needed to reset fs->freereg
+
+X Reverse "all calls have 'self'" to increase compatibility and reduce number of changes
 
 Separate <unknown> indexs from <nil> values
 Table entries are ordered, integer indexing returns value at that position. Table entries can be without key...
@@ -18,7 +22,7 @@ Method vs non-method calls
     a.b() _ method call
 
 
-Check for solutions to setlist when stack has grown a bit for tableconstructor
+_ Check for solutions to setlist when stack has grown a bit for tableconstructor
 
 try for (paramlist):{block} style lamda expressions (presently func(paramlist){block}
 
