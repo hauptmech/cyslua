@@ -1,10 +1,10 @@
 --- This file is part of LuaDist project
 
-name = "lua"
+name = "cyslua"
 version = "5.2.1"
 
-desc = "Lua is a powerful, fast, light-weight, embeddable scripting language."
-author = "Roberto Ierusalimschy, Waldemar Celes, Luiz Henrique de Figueiredo"
+desc = "cyslua is an adaptation of the cystem grammar or the lua infrastructure. lua is a powerful, fast, light-weight, embeddable scripting language."
+author = "Cyslua: Traveler Hauptman. Lua: Roberto Ierusalimschy, Waldemar Celes, Luiz Henrique de Figueiredo"
 license = "MIT/X11"
-url = "http://www.lua.org"
+url = "http://www.cystem.info"
 maintainer = "Peter Drahoš"

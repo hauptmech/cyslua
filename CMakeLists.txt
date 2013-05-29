@@ -4,7 +4,7 @@
 # For details see the COPYRIGHT file distributed with LuaDist.
 # Please note that the package source code is licensed under its own license.
 
-project ( lua C )
+project ( cyslua C )
 cmake_minimum_required ( VERSION 2.8 )
 include ( cmake/dist.cmake )
 
@@ -33,7 +33,7 @@ else ( )
   set ( LUA_DIR ${CMAKE_INSTALL_PREFIX} CACHE STRING "Destination from which modules will be resolved. See INSTALL_LMOD and INSTALL_CMOD." )
 endif ( )
 
-set ( LUA_PATH_DEFAULT "./?.lua;${LUA_DIR}${LUA_LDIR}/?.lua;${LUA_DIR}${LUA_LDIR}/?/init.lua" )
+set ( LUA_PATH_DEFAULT "./?.cys;${LUA_DIR}${LUA_LDIR}/?.cys;${LUA_DIR}${LUA_LDIR}/?/init.cys" )
 set ( LUA_CPATH_DEFAULT "./?${LUA_MODULE_SUFFIX};${LUA_DIR}${LUA_CDIR}/?${LUA_MODULE_SUFFIX};${LUA_DIR}${LUA_CDIR}/loadall${LUA_MODULE_SUFFIX}" )
 
 if ( WIN32 AND NOT CYGWIN )
@@ -120,28 +120,28 @@ endif ( )
 
 ## BUILD
 # Create lua library
-add_library ( liblua SHARED ${SRC_CORE} ${SRC_LIB} ${LUA_DLL_RC} ${LUA_DEF} )
-target_link_libraries ( liblua ${LIBS} )
-set_target_properties ( liblua PROPERTIES OUTPUT_NAME lua CLEAN_DIRECT_OUTPUT 1 )
+add_library ( libcyslua SHARED ${SRC_CORE} ${SRC_LIB} ${LUA_DLL_RC} ${LUA_DEF} )
+target_link_libraries ( libcyslua ${LIBS} )
+set_target_properties ( libcyslua PROPERTIES OUTPUT_NAME cyslua CLEAN_DIRECT_OUTPUT 1 )
 if ( LUA_BUILD_AS_DLL )
-  set_target_properties ( liblua PROPERTIES COMPILE_DEFINITIONS LUA_BUILD_AS_DLL )
+  set_target_properties ( libcyslua PROPERTIES COMPILE_DEFINITIONS LUA_BUILD_AS_DLL )
 endif ()
 
-add_executable ( lua ${SRC_LUA} src/lua.rc )
-target_link_libraries ( lua liblua )
+add_executable ( cyslua ${SRC_LUA} src/lua.rc )
+target_link_libraries ( cyslua libcyslua )
 
-add_executable ( luac ${SRC_CORE} ${SRC_LIB} ${SRC_LUAC} src/luac.rc )
-target_link_libraries ( luac ${LIBS} )
+add_executable ( cysluac ${SRC_CORE} ${SRC_LIB} ${SRC_LUAC} src/luac.rc )
+target_link_libraries ( cysluac ${LIBS} )
 
 # On windows a variant of the lua interpreter without console output needs to be built
 if ( LUA_BUILD_WLUA )
   add_executable ( wlua WIN32 src/wmain.c ${SRC_LUA} src/lua.rc )
-  target_link_libraries ( wlua liblua )
+  target_link_libraries ( wlua libcyslua )
   install_executable ( wlua )
 endif ( )
 
-install_executable ( lua luac )
-install_library ( liblua )
+install_executable ( cyslua cysluac )
+install_library ( libcyslua )
 install_data ( README.md )
 #install_lua_module ( strict etc/strict.lua )
 install_header ( src/lua.h src/lualib.h src/lauxlib.h ${CMAKE_CURRENT_BINARY_DIR}/luaconf.h )
