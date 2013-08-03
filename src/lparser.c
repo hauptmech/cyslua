@@ -6,6 +6,8 @@
 
 
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #define lparser_c
 #define LUA_CORE
@@ -103,7 +105,7 @@ static int testnext (LexState *ls, int c) {
     luaX_next(ls);
     return 1;
   }
-  
+
   else return 0;
 }
 
@@ -678,7 +680,7 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
   }
   else  /* ls->t.token == '[' */
     yindex(ls, &key);
-  
+
   cc->nh++;
   checknext(ls, ':');
   rkkey = luaK_exp2RK(fs, &key);
@@ -745,7 +747,7 @@ static void field (LexState *ls, struct ConsControl *cc) {
 }
 int tmptest = 0;
 /* Table tableconstructor */
-static void tableconstructor (LexState *ls, expdesc *table) {
+static int tableconstructor (LexState *ls, expdesc *table) {
   /* tableconstructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
   FuncState *fs = ls->fs;
@@ -760,9 +762,9 @@ static void tableconstructor (LexState *ls, expdesc *table) {
   init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
 
   checknext(ls, '(');
-  
+
   int expr_reg = luaK_reserveregs(ls->fs,1);
-  
+
   do {
     lua_assert(cc.v.k == VVOID || cc.tostore > 0);
     if (ls->t.token == ')') { //// () empty list
@@ -810,7 +812,7 @@ static void tableconstructor (LexState *ls, expdesc *table) {
                     if( init==0){
                         pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
                         init_exp(table, VRELOCABLE, pc);
-                        
+
                         luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
                         fieldcnt++;
                         init = 1;
@@ -819,7 +821,7 @@ static void tableconstructor (LexState *ls, expdesc *table) {
                     checklimit(fs, cc.nh, MAX_INT, "items in a tableconstructor");
                     checklabel(ls, &key);
                     cc.nh++;
-                    
+
                     /* //ToDo: if 'func' defined in place, capture it here so we can make it a self function
                     if (l->t.token == TK_FUNCTION) {
                       luaX_next(ls);
@@ -840,7 +842,7 @@ static void tableconstructor (LexState *ls, expdesc *table) {
                 if( init==0){
                     pc = luaK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
                     init_exp(table, VRELOCABLE, pc);
-                    
+
                     luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
                     fieldcnt++;
                     init = 1;
@@ -867,7 +869,6 @@ static void tableconstructor (LexState *ls, expdesc *table) {
               checklimit(ls->fs, cc.na, MAX_INT, "items in a tableconstructor");
               cc.na++;
               cc.tostore++;
-
               break;
             }
           }
@@ -881,10 +882,10 @@ static void tableconstructor (LexState *ls, expdesc *table) {
           luaX_next(ls);
         fieldcnt++;
       }
-  } while (!done); 
+  } while (!done);
 //dump = func(x){for i,j in pairs(x){print(i,j)}}
   check_match(ls, ')', '(', line);
-  
+
   if (fieldcnt) {
       //lastlistfield(fs, &cc);
     if (!init){
@@ -892,9 +893,9 @@ static void tableconstructor (LexState *ls, expdesc *table) {
         init_exp(table, VRELOCABLE, pc);
         luaK_exp2reg(ls->fs, table, expr_reg); //->u.info pc -> reg
     }
-      if (cc.tostore != 0) { 
+      if (cc.tostore != 0) {
 
-        
+
           if (hasmultret(cc.v.k)) {
             luaK_setmultret(fs, &cc.v);
             luaK_setlist(fs, cc.table->u.info, cc.na, LUA_MULTRET);
@@ -916,6 +917,7 @@ static void tableconstructor (LexState *ls, expdesc *table) {
     luaK_dischargevars(fs, &cc.v);
     *table = cc.v;  //Maksure our expdesc has the correct info
   }
+  return fieldcnt;
 }
 
 /* }====================================================================== */
@@ -955,6 +957,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   /* body ->  `(' parlist `)' block END */
   FuncState new_fs;
   BlockCnt bl;
+
   new_fs.f = addprototype(ls);
   new_fs.f->linedefined = line;
   open_func(ls, &new_fs, &bl);
@@ -1043,23 +1046,26 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
 */
 
 
-static void primaryexp (LexState *ls, expdesc *v) {
+static int primaryexp (LexState *ls, expdesc *v) {
+  int ret = 0;
   /* primaryexp -> NAME | '(' expr ')' */
   switch (ls->t.token) {
     case '(': {
       int line = ls->linenumber;
         // TEH tableconstructor generates possible expressions instead of expr...
-      tableconstructor(ls,v);
-      return;
+      ret = tableconstructor(ls,v);
+
+      return ret;
     }
     case TK_NAME: {
       singlevar(ls, v);
-      return;
+      return ret;
     }
     default: {
       luaX_syntaxerror(ls, "unexpected symbol");
     }
   }
+
 }
 
 
@@ -1070,6 +1076,8 @@ static void suffixedexp (LexState *ls, expdesc *v) {
   int line = ls->linenumber;
   int is_not_method = 0;
   expdesc lastkey;
+  int elements;
+
 
   if (ls->t.token == '.'){
     is_not_method = 1;
@@ -1077,7 +1085,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
   }
 
   init_exp(&lastkey, VVOID, 0);  /* no value (yet) */
-  primaryexp(ls, v); //TEH - Brought in primaryexp
+  elements = primaryexp(ls, v); //TEH - Brought in primaryexp
 
   for (;;) {
     switch (ls->t.token) {
@@ -1089,7 +1097,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         if (ls->t.token == '(') { //If a call is comming add the self parameter
             if (!is_not_method){ //Automatically add self unless we started with '.'
                 luaK_exp2nextreg(fs, v);
-                luaK_self(fs, v, &key); 
+                luaK_self(fs, v, &key);
                 funcargs(ls, v, line);
             }
             else {
@@ -1129,15 +1137,19 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         funcargs(ls, v, line);
         break;
       }
-      case '(': 
-      case TK_STRING: 
+      case '(':
+      case TK_STRING:
       {  /* funcargs */
+        if (!elements){
         expdesc key;
+
         luaK_exp2nextreg(fs, v); //Add call
 //        new_global(ls,&key,"cystem_self"); //Add dummy self parameter
 //        luaK_exp2nextreg(fs, &key);
 
         funcargs(ls, v, line);
+        }
+        else return;
         break;
       }
       default: return;
@@ -1252,6 +1264,7 @@ static const struct {
 static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
   BinOpr op;
   UnOpr uop;
+
   enterlevel(ls);
   uop = getunopr(ls->t.token);
   if (uop != OPR_NOUNOPR) {
@@ -1614,9 +1627,9 @@ static void test_then_block (LexState *ls, int *escapelist, int line) {
   }
   statlist(ls,0);  /* `then' part */
   leaveblock(fs);
-  
+
   check_match(ls,TK_END,TK_DO,line);   //we have to provide an incomplete line error to the interpreter.
-  
+
   if (ls->t.token == TK_ELSE ||
       ls->t.token == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
     luaK_concat(fs, escapelist, luaK_jump(fs));  /* must jump over it */
@@ -1624,7 +1637,7 @@ static void test_then_block (LexState *ls, int *escapelist, int line) {
 }
 
 //ToDo: lua interpreter does not handle two sequential lines of if statement
-//workaround is to put compound if statements inside a {} block 
+//workaround is to put compound if statements inside a {} block
 static void ifstat (LexState *ls, int line) {
   /* ifstat -> IF cond '{' block {ELSEIF cond THEN block} [ELSE block] '}' */
   FuncState *fs = ls->fs;
@@ -1639,7 +1652,7 @@ static void ifstat (LexState *ls, int line) {
     block(ls);  /* `else' part */
     check_match(ls,TK_END,TK_DO,line);
   }
-  
+
   //check_match(ls, TK_END, TK_IF, line);
   luaK_patchtohere(fs, escapelist);  /* patch escape list to 'if' end */
 }
@@ -1732,7 +1745,7 @@ static void exprstat (LexState *ls, int is_functiondef) {
   /* stat -> func | assignment */
   FuncState *fs = ls->fs;
   struct LHS_assign v;
-  
+
   expr(ls,&v.v);
 
   if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
@@ -1743,7 +1756,7 @@ static void exprstat (LexState *ls, int is_functiondef) {
     //check_condition(ls, v.v.k == VCALL, "syntax error, expected an assignment or function call");
     if (v.v.k == VCALL)
       SETARG_C(getcode(fs, &v.v), 1);  /* call statement uses no results */
-      
+
     if (is_functiondef && ls->t.token == TK_END){ //In a function definition the last expression is an automatic return
         expdesc e;
         int first, nret;  /* registers with returned values */
@@ -1898,4 +1911,5 @@ Closure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   lua_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
   return cl;  /* it's on the stack too */
 }
+
 
