@@ -1,0 +1,46 @@
+----
+Author: Traveler Hauptman
+(C)2008-2012 All rights reserved.
+
+Conversions relative to SI units. m,kg,s
+2*in => 2 inches in meters
+2/in => 2 meters in inches
+
+N => kg*m/s**2
+Joule,Torque => Nm => kg*m**2/s**2
+Watt =>kg*m^2/s^3
+rad/sec => 1/s
+
+====
+
+pi = math.pi
+tau = 2*pi
+G = 9.81
+
+
+Deg = 180/pi 
+RPM = 2*pi/60
+Hz = 2*pi
+Rad = 1
+
+mm = 0.001
+cm = 0.01
+inch = 25.4*mm
+ft = 12*inch
+cc = cm*cm*cm
+m = 1
+
+g = 0.001
+
+N = 1
+Nm = 1
+MPa = 1000000
+GPa = 1000000000
+
+sec = 1
+minute = 60
+hour = 3600
+day = 24*hour
+year = 365*day
+
+Kelvin = 273.15

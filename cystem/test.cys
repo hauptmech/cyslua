@@ -1,0 +1,18 @@
+----
+This is a test file for the CystemLua language
+
+This portion here is a long comment / string
+====
+
+a = (x: 12, y: 34)
+
+dump = func(a){
+for i,j in pairs(a) {
+  print(i,j)
+}
+}
+
+dump(a)
+
+
+

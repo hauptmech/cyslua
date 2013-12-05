@@ -1,0 +1,31 @@
+Pkg =  ()
+
+func fixfuncs(env, name, value){
+  rawset(env, name, value)
+  if type(value)=='function'{ 
+    print('newfunc', env, name, value)
+    setfenv(value, setmetatable((), (__index:env)))
+  }
+}
+
+setfenv(1, setmetatable(Pkg, (__index:getfenv(), __newindex:fixfuncs)))
+
+y = 0
+
+func one(x){
+  y = x
+  return y
+}
+
+func two(){
+  Pkg.y = 99
+  y = 2
+  return y
+}
+
+three = func (){
+  y = 3
+  return y
+}
+
+print(y, one(1), y, two(), y, three(), y)

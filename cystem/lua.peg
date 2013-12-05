@@ -1,0 +1,39 @@
+
+block <- statlist
+exprstat <- func / assignment
+assignment <- '=' explist
+primaryexp <- NAME / '(' expr ')'
+suffixedexp <- primaryexp { '.' NAME / '[' exp ']' / ':' NAME funcargs / funcargs } 
+expr <- subexpr
+subexpr <- (simpleexp / unop subexpr) { binop subexpr }
+simpleexp <- NUMBER / STRING / NIL / TRUE / FALSE / ... / tableconstructor / FUNCTION body / suffixedexp
+
+funcargs <- '(' [ explist ] ')' 
+explist <- expr { ',' expr }
+
+body <-  '(' parlist ')' block END
+parlist <- [ param { ',' param } ] 
+sep <- ',' / ';'
+field <- listfield / recfield
+listfield <- exp
+recfield <- (NAME / '['exp1']') '=' exp1
+
+index <- '[' expr ']
+fieldsel <- ['.' / ':'] NAME 
+statlist <- { stat [';'] } 
+label <- '::' NAME '::' 
+whilestat <- WHILE cond DO block END 
+stat <- LOCAL NAME {',' NAME} ['=' explist]
+funcname <- NAME {fieldsel} [':' NAME] 
+funcstat <- FUNCTION funcname body
+
+#Compression
+
+simpleexp <- NUMBER / STRING / NIL / TRUE / FALSE / ... / FUNCTION body / suffixedexpr / tableconstructor
+suffixedexp <- ( NAME / '(' expr ')' ) { '.' NAME / '[' exp ']' / ':' NAME funcargs / funcargs } 
+expr <- (simpleexp / unop expr) / ( binop expr )*
+
+tableconstructor <- '()' / '(' field ',' ')' / '(' [ field { ',' field } ','? ] ')'
+
+field <- expr / ( NAME / '[' expr ']') ':' expr
+
