@@ -42,6 +42,20 @@ test_var = 8  _ This variable is for test
 
 ```
 
+
+Tables:
+-------
+
+Tables are enclosed be parenthesis instead of braces. Where the syntax in 
+unambiguous, comma seperators may be left out, using only spaces instead.
+
+Keys are defined with the cystem label syntax: ``` mykey: value ``` which
+is an identifier followed by a colon.
+
+```
+myTable = ( key1: ( subkey1: 3  subkey2: 4)  key2: 55 )
+```
+
 Blocks:
 -------
 
@@ -59,19 +73,6 @@ idx = 5
 while (idx > 0) { print(a)  dec(a) }
 ```
 
-
-Tables:
--------
-
-Tables are enclosed be parenthesis instead of braces. Where the syntax in 
-unambiguous, comma seperators may be left out, using only spaces instead.
-
-Keys are defined with the cystem label syntax: ''' (mykey: value) ''' which
-is an identifier followed by a colon.
-
-```
-myTable = ( key1: ( subkey1: 3  subkey2: 4)  key2: 55 )
-```
 
 Local:
 ------
