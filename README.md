@@ -24,7 +24,7 @@ A summary of the differences between the languages follows:
 
 Comments:
 ---------
-'''
+```
 -----
 myvar = 3
 ---
@@ -40,25 +40,25 @@ End of line comments are started with " _ " and continue to the end of the line.
 
 test_var = 8  _ This variable is for test
 
-'''
+```
 
 Blocks:
 -------
 
-Lua blocks are '''do ... end'''
+Lua blocks are ```do ... end```
 
-CysLua blocks use curly brackets '''{ ... }'''
+CysLua blocks use curly brackets ```{ ... }```
 
 The last statement of a block is implied to be a return statement.
 
-'''
+```
 
 dec = func(param){ param-1 } _ Create decrement function
 
 idx = 5
 while (idx > 0) { print(a)  dec(a) }
+```
 
-'''
 
 Tables:
 -------
@@ -69,16 +69,16 @@ unambiguous, comma seperators may be left out, using only spaces instead.
 Keys are defined with the cystem label syntax: ''' (mykey: value) ''' which
 is an identifier followed by a colon.
 
-'''
+```
 myTable = ( key1: ( subkey1: 3  subkey2: 4)  key2: 55 )
-'''
+```
 
 Local:
 ------
 
 Local variables are designated with the cystem label syntax.
 
-'''
+```
 myglobal = 4
 idx = 5
 while(idx > 0) {
@@ -86,7 +86,7 @@ while(idx > 0) {
   print(idx,_G['idx'])  
   _G['idx'] = _G['idx']-1  _ access global variables via the _G table
 }
-'''
+```
 
 Modules and Methods:
 --------------------
@@ -102,12 +102,12 @@ By default all methods have an implied 'this' or 'self' parameter named 'my'.
 With this adjustment, functions and methods are defined and called with the 
 same syntax.
 
-'''
+```
 a = .string.lower('HeLLo')  _ Call the string module function 'lower'
 
 mytable = ( data1: 45 )
 func mytable.mymethod(){ print( my.data1 ) } _ Define method for mytable
-'''
+```
 
 
 
