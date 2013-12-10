@@ -1,5 +1,5 @@
 
-
+_ Metamethods do not appear to be working...
 _ Parse nested tables with no commas correctly : a = ( ( 2 3 ) ( 4 5) )   _ this currently fails. You must add a comma.
 _ Consider adding unary - to number literals.  : a = (0 0 -9.8) _ currently fails because sees expression "0 - 9.81"
 

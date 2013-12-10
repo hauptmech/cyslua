@@ -1,0 +1,257 @@
+
+_ This tutorial adapted from http://learnxinyminutes.com/docs/lua/
+
+_ An underscore followed by a space is a comment to the end of the line.
+
+--- 
+ Three or more '-' start a multiline comment. An equal number of '=' ends the
+ comment. Nest them by using additional starting dashes and terminating equals.
+====
+
+
+---
+ 1. Variables and flow control
+===
+
+
+num = 42  _ All numbers are doubles
+
+s = 'walternate' _ Immutable strings like python
+t = "double-quotes are also fine"
+u = ---Multi-line comments in an assign statement
+        become multi-line strings. 
+===
+
+t = nil  _ Undefines t; Lua has garbage collection.
+
+_ Blocks are denoted with curly brackets like C (different that Lua)
+while num < 50 {
+  num = num + 1
+}
+
+_ If clauses also use curly brackets
+if num > 40 {
+  print('over 40')
+}
+elseif s ~= 'walternate' {  _ ~= is not equals.
+  _ Equality check is == like Python; ok for strs.
+  io.write('not over 40\n')  _ Defaults to stdout.
+}
+else {
+  _ Variables are global by default.
+  thisIsGlobal = 5  _ Camel case is common.
+
+  _ How to make a variable local:
+  line: io.read()  _ Reads next stdin line.
+
+  _ String concatenation uses the .. operator:
+  print('Winter is coming, ' .. line)
+
+}
+
+
+_ Undefined variables return nil.
+_ This is not an error:
+foo = anUnknownVariable  _ Now foo = nil.
+
+aBoolValue = false
+
+_ Only nil and false are falsy; 0 and '' are true!
+if not aBoolValue { print('twas false') }
+
+_ 'or' and 'and' are short-circuited.
+_ This is similar to the a?b:c operator in C/js:
+ans = aBoolValue and 'yes' or 'no'  _ > 'no'
+
+karlSum = 0
+for i = 1, 100 {  _ The range includes both ends.
+  karlSum = karlSum + i
+}
+
+_ Use "100, 1, -1" as the range to count down:
+fredSum = 0
+for j = 100, 1, -1 { fredSum = fredSum + j }
+
+_ In general, the range is begin, end[, step].
+
+_ Another loop construct:
+repeat
+  print('the way of the future')
+  num = num - 1
+until num == 0
+
+
+---
+  2. Functions
+===
+
+func fib(n){
+  if n < 2 { return n } 
+  return fib(n - 2) + fib(n - 1)
+}
+
+_ Closures and anonymous functions are ok:
+func adder(x){
+  _ The returned function is created when adder is
+  _ called, and remembers the value of x:
+  a: func(y){ return x + y }
+  return a
+}
+a1 = adder(9)
+a2 = adder(36)
+print(a1(16))  _ > 25
+print(a2(64))  _ > 100
+
+_ Returns, func calls, and assignments all work
+_ with lists that may be mismatched in length.
+_ Unmatched receivers are nil;
+_ unmatched senders are discarded.
+
+x, y, z = 1, 2, 3, 4
+_ Now x = 1, y = 2, z = 3, and 4 is thrown away.
+
+
+func bar(a, b, c){
+  print(a, b, c)
+  return 4, 8, 15, 16, 23, 42
+}
+
+x, y = bar('zaphod')  _ > prints "zaphod  nil nil"
+_ Now x = 4, y = 8, values 15..42 are discarded.
+
+_  Functions are first-class, may be local/global.
+_  These are the same:
+func f(x){ return x * x }
+f = func (x){ return x * x }
+
+_  Local functions should be declared with the label syntax:
+g: func(x){ return math.sin(x) }
+
+_  Trig funcs work in radians, by the way.
+
+_  Calls with one string param don't need parens:
+print 'hello'  _  Works fine.
+
+---
+  3. Tables
+===
+
+_ Tables = Lua's only compound data structure;
+_         they are associative arrays.
+_  Similar to php arrays or js objects, they are
+_  hash-lookup dicts that can also be used as lists.
+
+_  Using tables as dictionaries / maps:
+
+_  Dict literals have string keys by default:
+t = (key1: 'value1', key2: false)
+
+_ String keys can use js-like dot notation:
+print(t.key1)  _ Prints 'value1'.
+t.newKey = ()  _ Adds a new key/value pair.
+t.key2 = nil   _ Removes key2 from the table.
+
+_ Literal notation for any (non-nil) value as key:
+u = (['@!#']: 'qbert', [()]: 1729, [6.28]: 'tau')
+print(u[6.28])  _ prints "tau"
+
+
+
+
+_ Key matching is basically by value for numbers
+_ and strings, but by identity for tables.
+a = u['@!#']  _ Now a = 'qbert'.
+b = u[()]     _ We might expect 1729, but it's nil:
+_ b = nil since the lookup fails. It fails
+_ because the key we used is not the same object
+_ as the one used to store the original value. So
+_ strings & numbers are more portable keys.
+
+_ A one-table-param function call needs no parens:
+func h(x){ print(x.key1) }
+h((key1: 'Sonmi~451'))  _ Prints 'Sonmi~451'.
+
+for key, val in pairs(u) {  _ Table iteration.
+  print(key, val)
+}
+
+_ _G is a special table of all globals.
+print(_G['_G'] == _G)  _ Prints 'true'.
+
+_ Using tables as lists / arrays:
+
+_ List literals implicitly set up int keys:
+v = ('value1', 'value2', 1.21, 'gigawatts')
+for i = 1, #v {  _ #v is the size of v for lists.
+  print(v[i])  _ Indices start at 1 !! SO CRAZY!
+}
+_ A 'list' is not a real type. v is just a table
+_ with consecutive integer keys, treated as a list.
+
+
+---
+  3.1 Metatables and metamethods.
+===
+
+_ A table can have a metatable that gives the table
+_ operator-overloadish behavior. Later we'll see
+_ how metatables support js-prototypey behavior.
+
+f1 = (a: 1, b: 2)  _ Represents the fraction a/b.
+f2 = (a: 2, b: 3)
+
+_ This would fail:
+_ s = f1 + f2
+
+metafraction = () 
+func metafraction.__add(f1, f2){
+  sum: ()
+  sum.b = f1.b * f2.b
+  sum.a = f1.a * f2.b + f2.a * f1.b
+  return sum
+}
+
+setmetatable(f1, metafraction)
+setmetatable(f2, metafraction)
+
+_ s = f1 + f2  _ call __add(f1, f2) on f1's metatable
+
+_ f1, f2 have no key for their metatable, unlike
+_ prototypes in js, so you must retrieve it as in
+_ getmetatable(f1). The metatable is a normal table
+_ with keys that Lua knows about, like __add.
+
+_ But the next line fails since s has no metatable:
+_ t = s + s
+_ Class-like patterns given below would fix this.
+
+_ An __index on a metatable overloads dot lookups:
+defaultFavs = (animal: 'gru', food: 'donuts')
+myFavs = (food: 'pizza')
+setmetatable(myFavs, (__index: defaultFavs))
+eatenBy = myFavs.animal  _ works! thanks, metatable
+
+_ Direct table lookups that fail will retry using
+_ the metatable's __index value, and this recurses.
+
+_ An __index value can also be a function(tbl, key)
+_ for more customized lookups.
+
+_ Values of __index,add, .. are called metamethods.
+_ Full list. Here a is a table with the metamethod.
+
+_ __add(a, b)                     for a + b
+_ __sub(a, b)                     for a - b
+_ __mul(a, b)                     for a * b
+_ __div(a, b)                     for a / b
+_ __mod(a, b)                     for a % b
+_ __pow(a, b)                     for a ^ b
+_ __unm(a)                        for -a
+_ __concat(a, b)                  for a .. b
+_ __len(a)                        for #a
+_ __eq(a, b)                      for a == b
+_ __lt(a, b)                      for a < b
+_ __le(a, b)                      for a <= b
+_ __index(a, b)  <fn or a table>  for a.b
+_ __newindex(a, b, c)             for a.b = c
+_ __call(a, ...)                  for a(...)
