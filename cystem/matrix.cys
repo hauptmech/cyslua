@@ -130,7 +130,7 @@ matrix_meta: ()
  _  if rows and columns are given and are numbers, returns a matrix with size rowsxcolumns
  _  if num is given then returns a matrix with given size and all values set to num
  _  if rows is given as number and columns is "I", will return an identity matrix of size rowsxrows
-func matrix.new( rows, columns, value ){
+def matrix.new( rows, columns, value ){
 	 _  check for given matrix
 	if type( rows ) == "table" {
 		 _  check for vector
@@ -172,7 +172,7 @@ func matrix.new( rows, columns, value ){
  _ // matrix ( rows [, comlumns [, value]] )
  _  set __call behaviour of matrix
  _  for matrix( ... ) as matrix.new( ... )
-setmetatable( matrix, ( __call: func( ... ){ return .matrix.new( ... ) } ) )
+setmetatable( matrix, ( __call: def( ... ){ return .matrix.new( ... ) } ) )
 
 
  _  functions are designed to be light on checks
@@ -194,7 +194,7 @@ setmetatable( matrix, ( __call: func( ... ){ return .matrix.new( ... ) } ) )
 
  _ // matrix.add ( m1, m2 )
  _  Add two matrices; m2 may be of bigger size than m1
-func matrix.add( m1, m2 ){
+def matrix.add( m1, m2 ){
 	mtx: ()
 	for i = 1,#m1 {
 		m3i: ()
@@ -208,7 +208,7 @@ func matrix.add( m1, m2 ){
 
  _ // matrix.sub ( m1 ,m2 )
  _  Subtract two matrices; m2 may be of bigger size than m1
-func matrix.sub( m1, m2 ){
+def matrix.sub( m1, m2 ){
 	mtx: ()
 	for i = 1,#m1 {
 		m3i: ()
@@ -223,7 +223,7 @@ func matrix.sub( m1, m2 ){
  _ // matrix.mul ( m1, m2 )
  _  Multiply two matrices; m1 columns must be equal to m2 rows
  _  e.g. #m1[1] == #m2
-func matrix.mul( m1, m2 ){
+def matrix.mul( m1, m2 ){
 	 _  multiply rows with columns
 	mtx: ()
 	for i = 1,#m1 {
@@ -244,7 +244,7 @@ func matrix.mul( m1, m2 ){
  _  m2 must be square, to be inverted,
  _  if that fails returns the rank of m2 as second argument
  _  e.g. #m1[1] == #m2; #m2 == #m2[1]
-func matrix.div( m1, m2 ){
+def matrix.div( m1, m2 ){
 	rank:0
     m2,rank = matrix.invert( m2 )
 	if not m2 { return m2, rank }  _  singular
@@ -255,7 +255,7 @@ func matrix.div( m1, m2 ){
  _  Multiply matrix with a number
  _  num may be of type 'number' or 'complex number'
  _  strings get converted to complex number, if that fails then to symbol
-func matrix.mulnum( m1, num ){
+def matrix.mulnum( m1, num ){
 	mtx: ()
 	 _  multiply elements with number
 	for i = 1,#m1 {
@@ -271,7 +271,7 @@ func matrix.mulnum( m1, num ){
  _  Divide matrix by a number
  _  num may be of type 'number' or 'complex number'
  _  strings get converted to complex number, if that fails then to symbol
-func matrix.divnum( m1, num ){
+def matrix.divnum( m1, num ){
 	mtx: ()
 	 _  divide elements by number
 	for i = 1,#m1 {
@@ -293,7 +293,7 @@ func matrix.divnum( m1, num ){
  _  m1 has to be square
  _  if num is negative and inverting m1 fails
  _  returns the rank of matrix m1 as second argument
-func matrix.pow( m1, num ){
+def matrix.pow( m1, num ){
 	assert(num == math.floor(num), "exponent not an integer")
 	if num == 0 {
 		return matrix.new( #m1,"I" )
@@ -311,7 +311,7 @@ func matrix.pow( m1, num ){
 	return mtx
 }
 
-number_norm2: func(x){
+number_norm2: def(x){
   return x * x
 }
 
@@ -325,7 +325,7 @@ number_norm2: func(x){
  _  here we try to get the nearest element to |1|, (smallest pivot element)
  _  os that usually we have |mtx[i][j]/subdet| > 1 or mtx[i][j];
  _  with complex matrices we use the complex.abs function to check if it is bigger or smaller
-func matrix.det( m1 ){
+def matrix.det( m1 ){
 
 	 _  check if matrix is quadratic
 	assert(#m1 == #m1[1], "matrix not square")
@@ -426,7 +426,7 @@ func matrix.det( m1 ){
  _  checking here for the element nearest but not equal to zero (smallest pivot element).
  _  This way the `factor` in `dogauss` will be >= 1, which
  _  can give better results.
-pivotOk: func( mtx,i,j,norm2 ){
+pivotOk: def( mtx,i,j,norm2 ){
 	 _  find min value
 	iMin: nil
 	normMin: math.huge
@@ -448,13 +448,13 @@ pivotOk: func( mtx,i,j,norm2 ){
 	return false
 }
 
-copy: func(x){
+copy: def(x){
 	return type(x) == "table" and x.copy(x) or x
 }
 
  _  note: in  _ // ... // _  we have a way that does no divison,
  _  however with big number and matrices we get problems since we { no reducing
-func matrix.dogauss( mtx ){
+def matrix.dogauss( mtx ){
 	e: mtx[1][1]
 	zero: type(e) == "table" and e.zero or 0
 	one: type(e) == "table" and e.one  or 1
@@ -518,7 +518,7 @@ func matrix.dogauss( mtx ){
  _  matrix must be square and not singular
  _  on success: returns inverted matrix
  _  on failure: returns nil,'rank of matrix'
-func matrix.invert( m1 ){
+def matrix.invert( m1 ){
 	assert(#m1 == #m1[1], "matrix not square")
 	mtx: matrix.copy( m1 )
 	ident: setmetatable( (),matrix_meta )
@@ -556,7 +556,7 @@ func matrix.invert( m1 ){
  _ 		as third argument, the average error between (matrix^.5)^2-inputmatrix
  _  you have to determin for yourself if the result is sufficent enough for you
  _  local average error
-get_abs_avg: func ( m1, m2 ){
+get_abs_avg: def ( m1, m2 ){
 	dist: 0
 	e: m1[1][1]
 	abs: type(e) == "table" and e.abs or math.abs
@@ -569,7 +569,7 @@ get_abs_avg: func ( m1, m2 ){
 	return dist/(#m1*2)
 }
  _  square root function
-func matrix.sqrt( m1, iters ){
+def matrix.sqrt( m1, iters ){
 	assert(#m1 == #m1[1], "matrix not square")
 	iters: iters or math.huge
 	y: matrix.copy( m1 )
@@ -600,7 +600,7 @@ func matrix.sqrt( m1, iters ){
  _  m1 and root have to be given;(m1 = matrix, root = number)
  _  conditions same as matrix.sqrt
  _  returns same values as matrix.sqrt
-func matrix.root( m1, root, iters ){
+def matrix.root( m1, root, iters ){
 	assert(#m1 == #m1[1], "matrix not square")
 	iters: iters or math.huge
 	mx: matrix.copy( m1 )
@@ -637,7 +637,7 @@ func matrix.root( m1, root, iters ){
  _  calculates the Frobenius norm of the matrix.
  _    ||mtx||_F = sqrt(SUM_(i,j) |a_(i,j)|^2)
  _  http://en.wikipedia.org/wiki/Frobenius_norm#Frobenius_norm
-func matrix.normf(mtx){
+def matrix.normf(mtx){
 	mtype: matrix.type(mtx)
 	result: 0
 	for i = 1,#mtx {
@@ -656,7 +656,7 @@ func matrix.normf(mtx){
  _    ||mtx||_(max) = max(|a_(i,j)|)
  _  Does not work with symbolic matrices
  _  http://en.wikipedia.org/wiki/Frobenius_norm#Max_norm
-func matrix.normmax(mtx){
+def matrix.normmax(mtx){
 	abs: (matrix.type(mtx) == "number") and math.abs or mtx[1][1].abs
 	result: 0
 	for i = 1,#mtx {
@@ -674,16 +674,16 @@ func matrix.normmax(mtx){
 
  _ // matrix.round ( mtx [, idp] )
  _  perform round on elements
-numround: func( num,mult ){
+numround: def( num,mult ){
 	return math.floor( num * mult + 0.5 ) / mult
 }
-tround: func( t,mult ){
+tround: def( t,mult ){
 	for i,v in ipairs(t) {
 		t[i] = math.floor( v * mult + 0.5 ) / mult
  }
 	return t
 }
-func matrix.round( mtx, idp ){
+def matrix.round( mtx, idp ){
 	mult: 10^( idp or 0 )
 	fround: matrix.type( mtx ) == "number" and numround or tround
 	for i = 1,#mtx {
@@ -696,16 +696,16 @@ func matrix.round( mtx, idp ){
 
  _ // matrix.random( mtx [,start] [, stop] [, idip] )
  _  fillmatrix with random values
-numfill: func( __,start,stop,idp ){
+numfill: def( __,start,stop,idp ){
 	return math.random( start,stop ) / idp
 }
-tfill: func( t,start,stop,idp ){
+tfill: def( t,start,stop,idp ){
 	for i in ipairs(t) {
 		t[i] = math.random( start,stop ) / idp
  }
 	return t
 }
-func matrix.random( mtx,start,stop,idp ){
+def matrix.random( mtx,start,stop,idp ){
     start: start or -10
     stop: stop or 10
     idp: idp or 1
@@ -727,7 +727,7 @@ func matrix.random( mtx,start,stop,idp ){
 
  _ // matrix.type ( mtx )
  _  get type of matrix, normal/complex/symbol or tensor
-func matrix.type( mtx ){
+def matrix.type( mtx ){
 	e: mtx[1][1]
 	if type(e) == "table" {
 		if e.type {
@@ -739,10 +739,10 @@ func matrix.type( mtx ){
 }
 	
  _  local functions to copy matrix values
-num_copy: func( num ){
+num_copy: def( num ){
 	return num
 }
-t_copy: func( t ){
+t_copy: def( t ){
 	newt: setmetatable( (), getmetatable( t ) )
 	for i,v in ipairs( t ) {
 		newt[i] = v
@@ -753,7 +753,7 @@ t_copy: func( t ){
  _ // matrix.copy ( m1 )
  _  Copy a matrix
  _  simple copy, one can write other functions oneself
-func matrix.copy( m1 ){
+def matrix.copy( m1 ){
 	docopy: matrix.type( m1 ) == "number" and num_copy or t_copy
 	mtx: ()
 	for i = 1,#m1[1] {
@@ -768,7 +768,7 @@ func matrix.copy( m1 ){
  _ // matrix.transpose ( m1 )
  _  Transpose a matrix
  _  switch rows and columns
-func matrix.transpose( m1 ){
+def matrix.transpose( m1 ){
 	docopy: matrix.type( m1 ) == "number" and num_copy or t_copy
 	mtx: ()
 	for i = 1,#m1[1] {
@@ -786,7 +786,7 @@ func matrix.transpose( m1 ){
  _  i1,j1 are the start element
  _  i2,j2 are the } element
  _  condition: i1,j1,i2,j2 are elements of the matrix
-func matrix.subm( m1,i1,j1,i2,j2 ){
+def matrix.subm( m1,i1,j1,i2,j2 ){
 	docopy: matrix.type( m1 ) == "number" and num_copy or t_copy
 	mtx: ()
 	for i = i1,i2 {
@@ -804,7 +804,7 @@ func matrix.subm( m1,i1,j1,i2,j2 ){
  _  Concatenate two matrices, horizontal
  _  will return m1m2; rows have to be the same
  _  e.g.: #m1 == #m2
-func matrix.concath( m1,m2 ){
+def matrix.concath( m1,m2 ){
 	assert(#m1 == #m2, "matrix size mismatch")
 	docopy: matrix.type( m1 ) == "number" and num_copy or t_copy
 	mtx: ()
@@ -826,7 +826,7 @@ func matrix.concath( m1,m2 ){
  _  will return	m1
  _ 					m2
  _  columns have to be the same; e.g.: #m1[1] == #m2[1]
-func matrix.concatv( m1,m2 ){
+def matrix.concatv( m1,m2 ){
 	assert(#m1[1] == #m2[1], "matrix size mismatch")
 	docopy: matrix.type( m1 ) == "number" and num_copy or t_copy
 	mtx: ()
@@ -849,7 +849,7 @@ func matrix.concatv( m1,m2 ){
 
  _ // matrix.rotl ( m1 )
  _  Rotate Left, 90 degrees
-func matrix.rotl( m1 ){
+def matrix.rotl( m1 ){
 	mtx: matrix.new( #m1[1],#m1 )
 	docopy: matrix.type( m1 ) == "number" and num_copy or t_copy
 	for i = 1,#m1 {
@@ -862,7 +862,7 @@ func matrix.rotl( m1 ){
 
  _ // matrix.rotr ( m1 )
  _  Rotate Right, 90 degrees
-func matrix.rotr( m1 ){
+def matrix.rotr( m1 ){
 	mtx: matrix.new( #m1[1],#m1 )
 	docopy: matrix.type( m1 ) == "number" and num_copy or t_copy
 	for i = 1,#m1 {
@@ -873,7 +873,7 @@ func matrix.rotr( m1 ){
 	return mtx
 }
 
-tensor_tostring: func( t,fstr ){
+tensor_tostring: def( t,fstr ){
 	if not fstr { return "[".. .table.concat(t,",").."]" }
 	tval: ()
 	for i,v in ipairs( t ) {
@@ -881,13 +881,13 @@ tensor_tostring: func( t,fstr ){
  }
 	return "[".. .table.concat(tval,",").."]"
 }
-number_tostring: func(e,fstr ){
+number_tostring: def(e,fstr ){
 	return fstr and .string.format( fstr,e ) or e
 }
 
  _ // matrix.tostring ( mtx, formatstr )
  _  tostring function
-func matrix.tostring( mtx, formatstr ){
+def matrix.tostring( mtx, formatstr ){
     _ mtx: my
 	ts: ()
 	mtype: matrix.type( mtx )
@@ -907,13 +907,13 @@ func matrix.tostring( mtx, formatstr ){
 
  _ // matrix.print ( mtx [, formatstr] )
  _  print out the matrix, just calls tostring
-func matrix.print( ... ){
+def matrix.print( ... ){
 	print( matrix.tostring( ... ) )
 }
 
  _ // matrix.latex ( mtx [, align] )
  _  LaTeX output
-func matrix.latex( mtx, align ){
+def matrix.latex( mtx, align ){
 	 _  align : option to align the elements
 	 _ 		c = center; l = left; r = right
 	 _ 		\usepackage(dcolumn); D(.)(,)(-1); aligns number by . replaces it with ,
@@ -940,19 +940,19 @@ func matrix.latex( mtx, align ){
 
  _ // matrix.rows ( mtx )
  _  return number of rows
-func matrix.rows( mtx ){
+def matrix.rows( mtx ){
 	return #mtx
 }
 
  _ // matrix.columns ( mtx )
  _  return number of columns
-func matrix.columns( mtx ){
+def matrix.columns( mtx ){
 	return #mtx[1]
 }
 
  _ //  matrix.size ( mtx )
  _  get matrix size as string rows,columns
-func matrix.size( mtx ){
+def matrix.size( mtx ){
 	if matrix.type( mtx ) == "tensor" {
 		return #mtx,#mtx[1],#mtx[1][1]
  }
@@ -962,7 +962,7 @@ func matrix.size( mtx ){
  _ // matrix.getelement ( mtx, i, j )
  _  return specific element ( row,column )
  _  returns element on success and nil on failure
-func matrix.getelement( mtx,i,j ){
+def matrix.getelement( mtx,i,j ){
 	if mtx[i] and mtx[i][j] {
 		return mtx[i][j]
  }
@@ -971,7 +971,7 @@ func matrix.getelement( mtx,i,j ){
  _ // matrix.setelement( mtx, i, j, value )
  _  set an element ( i, j, value )
  _  returns 1 on success and nil on failure
-func matrix.setelement( mtx,i,j,value ){
+def matrix.setelement( mtx,i,j,value ){
 	if matrix.getelement( mtx,i,j ) {
 		 _  check if value type is number
 		mtx[i][j] = value
@@ -981,12 +981,12 @@ func matrix.setelement( mtx,i,j,value ){
 
  _ // matrix.ipairs ( mtx )
  _  iteration, same for complex
-func matrix.ipairs( mtx ){
+def matrix.ipairs( mtx ){
     i: 1
     j: 0
     rows: #mtx
     columns: #mtx[1]
-	iter: func(){
+	iter: def(){
 		j = j + 1
 		if j > columns {  _  return first element from next row
 			i,j = i + 1,1
@@ -1007,13 +1007,13 @@ func matrix.ipairs( mtx ){
 
  _ // matrix.scalar ( m1, m2 )
  _  returns the Scalar Product of two 3x1 matrices (vectors)
-func matrix.scalar( m1, m2 ){
+def matrix.scalar( m1, m2 ){
 	return m1[1][1]*m2[1][1] + m1[2][1]*m2[2][1] +  m1[3][1]*m2[3][1]
 }
 
  _ // matrix.cross ( m1, m2 )
  _  returns the Cross Product of two 3x1 matrices (vectors)
-func matrix.cross( m1, m2 ){
+def matrix.cross( m1, m2 ){
 	mtx: ()
 	mtx[1] = ( m1[2][1]*m2[3][1] - m1[3][1]*m2[2][1] )
 	mtx[2] = ( m1[3][1]*m2[1][1] - m1[1][1]*m2[3][1] )
@@ -1023,14 +1023,14 @@ func matrix.cross( m1, m2 ){
 
  _ // matrix.len ( m1 )
  _  returns the Length of a 3x1 matrix (vector)
-func matrix.len( m1 ){
+def matrix.len( m1 ){
 	return math.sqrt( m1[1][1]^2 + m1[2][1]^2 + m1[3][1]^2 )
 }
 
 
  _ // matrix.replace (mtx, func, ...)
  _  for each element e in the matrix mtx, replace it with func(mtx, ...).
-func matrix.replace( m1, funct, ... ){
+def matrix.replace( m1, funct, ... ){
 	mtx: ()
 	for i = 1,#m1 {
 		m1i: m1[i]
@@ -1046,7 +1046,7 @@ func matrix.replace( m1, funct, ... ){
  _ // matrix.remcomplex ( mtx )
  _  set the matrix elements to strings
  _  IMPROVE: tostring v.s. tostringelements confusing
-func matrix.elementstostrings( mtx ){
+def matrix.elementstostrings( mtx ){
 	e: mtx[1][1]
 	tostring: type(e) == "table" and e.tostring or tostring
 	return matrix.replace(mtx, tostring)
@@ -1054,7 +1054,7 @@ func matrix.elementstostrings( mtx ){
 
  _ // matrix.solve ( m1 )
  _  solve; tries to solve a symbolic matrix to a number
-func matrix.solve( m1 ){
+def matrix.solve( m1 ){
 	assert( matrix.type( m1 ) == "symbol", "matrix not of type 'symbol'" )
 	mtx: ()
 	for i = 1,#m1 {
@@ -1078,17 +1078,17 @@ func matrix.solve( m1 ){
  _  note '...' is always faster than 'arg1,arg2,...' if it can be used
 
  _  Set add "+" behaviour
-matrix_meta.__add = func( ... ){
+matrix_meta.__add = def( ... ){
 	return matrix.add( ... )
 }
 
  _  Set subtract "-" behaviour
-matrix_meta.__sub = func( ... ){
+matrix_meta.__sub = def( ... ){
 	return matrix.sub( ... )
 }
 
  _  Set multiply "*" behaviour
-matrix_meta.__mul = func( m1,m2 ){
+matrix_meta.__mul = def( m1,m2 ){
 	if getmetatable( m1 ) ~= matrix_meta {
 		return matrix.mulnum( m2,m1 )
 	} elseif getmetatable( m2 ) ~= matrix_meta {
@@ -1098,7 +1098,7 @@ matrix_meta.__mul = func( m1,m2 ){
 }
 
  _  Set division "/" behaviour
-matrix_meta.__div = func( m1,m2 ){
+matrix_meta.__div = def( m1,m2 ){
 	if getmetatable( m1 ) ~= matrix_meta {
 		return matrix.mulnum( matrix.invert(m2),m1 )
 	} elseif getmetatable( m2 ) ~= matrix_meta {
@@ -1108,7 +1108,7 @@ matrix_meta.__div = func( m1,m2 ){
 }
 
  _  Set unary minus "-" behavior
-matrix_meta.__unm = func( mtx ){
+matrix_meta.__unm = def( mtx ){
 	return matrix.mulnum( mtx,-1 )
 }
 
@@ -1120,16 +1120,16 @@ matrix_meta.__unm = func( mtx ){
  _     if opt is '*' then it returns the complex conjugate matrix
 	option: (
 		 _  only for complex
-		["*"] : func( m1 ){ return matrix.conjugate( m1 ) },
+		["*"] : def( m1 ){ return matrix.conjugate( m1 ) },
 		 _  for both
-		["T"] : func( m1 ){ return matrix.transpose( m1 ) },
+		["T"] : def( m1 ){ return matrix.transpose( m1 ) },
 	)
-matrix_meta.__pow = func( m1, opt ){
+matrix_meta.__pow = def( m1, opt ){
 	return option[opt] and option[opt]( m1 ) or matrix.pow( m1,opt )
 }
 
  _  Set equal "==" behaviour
-matrix_meta.__eq = func( m1, m2 ){
+matrix_meta.__eq = def( m1, m2 ){
 	 _  check same type
 	if matrix.type( m1 ) ~= matrix.type( m2 ) {
 		return false
@@ -1150,12 +1150,12 @@ matrix_meta.__eq = func( m1, m2 ){
 }
 
  _  Set tostring "tostring( mtx )" behaviour
-matrix_meta.__tostring = func( ... ){
+matrix_meta.__tostring = def( ... ){
 	return matrix.tostring( ... )
 }
 
  _  set __call "mtx( [formatstr] )" behaviour, mtx [, formatstr]
-matrix_meta.__call = func( ... ){
+matrix_meta.__call = def( ... ){
 	matrix.print( ... )
 }
 
@@ -1175,7 +1175,7 @@ symbol_meta: ()
 symbol_meta.__index = symbol_meta
 symbol: symbol_meta
 
-func symbol_meta.new(o){
+def symbol_meta.new(o){
 	return setmetatable((tostring(o),), symbol_meta)
 }
 symbol_meta.to = symbol_meta.new
@@ -1183,16 +1183,16 @@ symbol_meta.to = symbol_meta.new
  _  symbol( arg )
  _  same as symbol.to( arg )
  _  set __call behaviour of symbol
-setmetatable( symbol_meta, ( __call: func( __,s ){ return symbol_meta.to( s ) } ) )
+setmetatable( symbol_meta, ( __call: def( __,s ){ return symbol_meta.to( s ) } ) )
 
 
  _  Converts object to string, optionally with formatting.
-func symbol_meta.tostring( e,fstr ){
+def symbol_meta.tostring( e,fstr ){
 	return string.format( fstr,e[1] )
 }
 
  _  Returns "symbol" if object is a symbol type, else nothing.
-func symbol_meta.type(){
+def symbol_meta.type(){
 	if getmetatable(my) == symbol_meta {
 		return "symbol"
  }
@@ -1200,7 +1200,7 @@ func symbol_meta.type(){
 
  _  Performs string.gsub on symbol.
  _  for use in matrix.replace
-func symbol_meta.gsub(from, to){
+def symbol_meta.gsub(from, to){
 	return symbol.to( string.gsub( my[1],from,to ) )
 }
 
@@ -1208,57 +1208,57 @@ func symbol_meta.gsub(from, to){
  _  makereplacer( "a",4,"b",7, ... )(x)
  _  will replace a with 4 and b with 7 in symbol x.
  _  for use in matrix.replace
-func symbol_meta.makereplacer( ... ){
+def symbol_meta.makereplacer( ... ){
 	tosub: ()
 	args: (...)
 	for i = 1,#args,2 {
 		tosub[args[i]] = args[i+1]
     }
-	funct: func( a ){ return tosub[a] or a }
-	return func(sym){
+	funct: def( a ){ return tosub[a] or a }
+	return def(sym){
 		return symbol.to( string.gsub( sym[1], "%a", funct ) )
  }
 }
 
  _  applies abs function to symbol
-func symbol_meta.abs(a){
+def symbol_meta.abs(a){
 	return symbol.to("(" .. a[1] .. ").abs()")
 }
 
  _  applies sqrt function to symbol
-func symbol_meta.sqrt(a){
+def symbol_meta.sqrt(a){
 	return symbol.to("(" .. a[1] .. ").sqrt()")
 }
 
-func symbol_meta.__add(a,b){
+def symbol_meta.__add(a,b){
 	return symbol.to(a .. "+" .. b)
 }
 
-func symbol_meta.__sub(a,b){
+def symbol_meta.__sub(a,b){
 	return symbol.to(a .. "-" .. b)
 }
 
-func symbol_meta.__mul(a,b){
+def symbol_meta.__mul(a,b){
 	return symbol.to("(" .. a .. ")*(" .. b .. ")")
 }
 
-func symbol_meta.__div(a,b){
+def symbol_meta.__div(a,b){
 	return symbol.to("(" .. a .. ")/(" .. b .. ")")
 }
 
-func symbol_meta.__pow(a,b){
+def symbol_meta.__pow(a,b){
 	return symbol.to("(" .. a .. ")^(" .. b .. ")")
 }
 
-func symbol_meta.__eq(a,b){
+def symbol_meta.__eq(a,b){
 	return a[1] == b[1]
 }
 
-func symbol_meta.__tostring(a){
+def symbol_meta.__tostring(a){
 	return a[1]
 }
 
-func symbol_meta.__concat(a,b){
+def symbol_meta.__concat(a,b){
 	return tostring(a) .. tostring(b)
 }
 

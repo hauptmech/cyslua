@@ -1,6 +1,6 @@
 ---- 
- _   This is an example model for the RBDL addon luamodel You need to
- _   enable BUILD_ADDON_LUAMODEL to be able to use this file.
+   This is an example model for the RBDL addon luamodel You need to
+   enable BUILD_ADDON_LUAMODEL to be able to use this file.
 ==== 
 
 print ("This is some output from the model file")

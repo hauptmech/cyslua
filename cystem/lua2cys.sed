@@ -10,7 +10,7 @@ s/{/(/g
 s/}/)/g
 
 #Functions are indicated by func and opened with {
-s/function\([^)]*)\)/func\1{/g
+s/function\([^)]*)\)/def\1{/g
 
 s/\sthen$/ {/g
 s/\sthen\s/ { /g

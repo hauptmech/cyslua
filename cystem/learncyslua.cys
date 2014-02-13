@@ -85,16 +85,16 @@ until num == 0
   2. Functions
 ===
 
-func fib(n){
+def fib(n){
   if n < 2 { return n } 
   return fib(n - 2) + fib(n - 1)
 }
 
 _ Closures and anonymous functions are ok:
-func adder(x){
+def adder(x){
   _ The returned function is created when adder is
   _ called, and remembers the value of x:
-  a: func(y){ return x + y }
+  a: def(y){ return x + y }
   return a
 }
 a1 = adder(9)
@@ -111,7 +111,7 @@ x, y, z = 1, 2, 3, 4
 _ Now x = 1, y = 2, z = 3, and 4 is thrown away.
 
 
-func bar(a, b, c){
+def bar(a, b, c){
   print(a, b, c)
   return 4, 8, 15, 16, 23, 42
 }
@@ -121,11 +121,11 @@ _ Now x = 4, y = 8, values 15..42 are discarded.
 
 _  Functions are first-class, may be local/global.
 _  These are the same:
-func f(x){ return x * x }
-f = func (x){ return x * x }
+def f(x){ return x * x }
+f = def (x){ return x * x }
 
 _  Local functions should be declared with the label syntax:
-g: func(x){ return math.sin(x) }
+g: def(x){ return math.sin(x) }
 
 _  Trig funcs work in radians, by the way.
 
@@ -168,7 +168,7 @@ _ as the one used to store the original value. So
 _ strings & numbers are more portable keys.
 
 _ A one-table-param function call needs no parens:
-func h(x){ print(x.key1) }
+def h(x){ print(x.key1) }
 h((key1: 'Sonmi~451'))  _ Prints 'Sonmi~451'.
 
 for key, val in pairs(u) {  _ Table iteration.
@@ -204,7 +204,7 @@ _ This would fail:
 _ s = f1 + f2
 
 metafraction = () 
-func metafraction.__add(f1, f2){
+def metafraction.__add(f1, f2){
   sum: ()
   sum.b = f1.b * f2.b
   sum.a = f1.a * f2.b + f2.a * f1.b

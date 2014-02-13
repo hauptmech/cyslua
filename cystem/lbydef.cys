@@ -1,6 +1,6 @@
 Pkg =  ()
 
-func fixfuncs(env, name, value){
+def fixfuncs(env, name, value){
   rawset(env, name, value)
   if type(value)=='function'{ 
     print('newfunc', env, name, value)
@@ -12,18 +12,18 @@ setfenv(1, setmetatable(Pkg, (__index:getfenv(), __newindex:fixfuncs)))
 
 y = 0
 
-func one(x){
+def one(x){
   y = x
   return y
 }
 
-func two(){
+def two(){
   Pkg.y = 99
   y = 2
   return y
 }
 
-three = func (){
+three = def (){
   y = 3
   return y
 }
